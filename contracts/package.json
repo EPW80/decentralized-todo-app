@@ -1,0 +1,41 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for decentralized todo app",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.js",
+    "deploy:localhost": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "deploy:mumbai": "hardhat run scripts/deploy.js --network polygonMumbai",
+    "deploy:arbitrum": "hardhat run scripts/deploy.js --network arbitrumGoerli",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet",
+    "node": "hardhat node",
+    "dev": "hardhat node",
+    "clean": "hardhat clean",
+    "coverage": "hardhat coverage",
+    "verify": "hardhat verify"
+  },
+  "keywords": [
+    "hardhat",
+    "solidity",
+    "ethereum",
+    "smart-contracts",
+    "blockchain"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/node": "^24.9.2",
+    "hardhat": "^2.19.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "dotenv": "^17.2.3"
+  }
+}

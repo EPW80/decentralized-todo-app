@@ -1,0 +1,56 @@
+{
+  "name": "decentralized-todo-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A decentralized todo application with blockchain integration",
+  "workspaces": [
+    "contracts",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm install --workspace=contracts && npm install --workspace=backend && npm install --workspace=frontend",
+    "dev:contracts": "npm run dev --workspace=contracts",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build:contracts": "npm run compile --workspace=contracts",
+    "build:backend": "npm run build --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build": "npm run build:contracts && npm run build:backend && npm run build:frontend",
+    "test:contracts": "npm run test --workspace=contracts",
+    "test:backend": "npm run test --workspace=backend",
+    "test:frontend": "npm run test --workspace=frontend",
+    "test": "npm run test:contracts && npm run test:backend && npm run test:frontend",
+    "deploy:contracts": "npm run deploy --workspace=contracts",
+    "clean": "rm -rf node_modules contracts/node_modules backend/node_modules frontend/node_modules",
+    "lint": "npm run lint --workspace=backend && npm run lint --workspace=frontend",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/decentralized-todo-app.git"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "solidity",
+    "hardhat",
+    "react",
+    "express",
+    "mongodb",
+    "web3",
+    "dapp",
+    "todo"
+  ],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,234 @@
+const Todo = require('../models/Todo');
+const blockchainService = require('../services/blockchainService');
+
+/**
+ * Get all todos for a specific address
+ * GET /api/todos/:address
+ */
+const getTodosByAddress = async (req, res, next) => {
+  try {
+    const { address } = req.params;
+    const { includeCompleted, includeDeleted } = req.query;
+
+    const todos = await Todo.findByOwner(
+      address,
+      includeCompleted !== 'false',
+      includeDeleted === 'true'
+    );
+
+    res.json({
+      success: true,
+      count: todos.length,
+      data: todos,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get a specific todo by ID
+ * GET /api/todos/todo/:id
+ */
+const getTodoById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const todo = await Todo.findById(id);
+
+    if (!todo) {
+      return res.status(404).json({
+        success: false,
+        error: 'Todo not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: todo,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Verify a todo against blockchain
+ * GET /api/todos/verify/:id
+ */
+const verifyTodo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const todo = await Todo.findById(id);
+
+    if (!todo) {
+      return res.status(404).json({
+        success: false,
+        error: 'Todo not found',
+      });
+    }
+
+    // Get blockchain data
+    const contract = blockchainService.getContract(todo.chainId);
+    if (!contract) {
+      return res.status(500).json({
+        success: false,
+        error: 'Blockchain network not available',
+      });
+    }
+
+    try {
+      const blockchainTask = await contract.getTask(todo.blockchainId);
+
+      const isValid =
+        blockchainTask.owner.toLowerCase() === todo.owner &&
+        blockchainTask.description === todo.description &&
+        blockchainTask.completed === todo.completed;
+
+      res.json({
+        success: true,
+        data: {
+          isValid,
+          cached: {
+            description: todo.description,
+            completed: todo.completed,
+            owner: todo.owner,
+          },
+          blockchain: {
+            description: blockchainTask.description,
+            completed: blockchainTask.completed,
+            owner: blockchainTask.owner.toLowerCase(),
+          },
+        },
+      });
+    } catch (blockchainError) {
+      res.json({
+        success: true,
+        data: {
+          isValid: false,
+          error: 'Task not found on blockchain or has been deleted',
+        },
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get user stats
+ * GET /api/todos/:address/stats
+ */
+const getUserStats = async (req, res, next) => {
+  try {
+    const { address } = req.params;
+
+    const [total, completed, active] = await Promise.all([
+      Todo.countByOwner(address),
+      Todo.countDocuments({
+        owner: address.toLowerCase(),
+        completed: true,
+        deleted: false,
+      }),
+      Todo.countDocuments({
+        owner: address.toLowerCase(),
+        completed: false,
+        deleted: false,
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        total,
+        completed,
+        active,
+        completionRate: total > 0 ? ((completed / total) * 100).toFixed(2) : 0,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Sync a specific todo from blockchain
+ * POST /api/todos/sync
+ */
+const syncTodoFromBlockchain = async (req, res, next) => {
+  try {
+    const { chainId, blockchainId } = req.body;
+
+    if (!chainId || !blockchainId) {
+      return res.status(400).json({
+        success: false,
+        error: 'chainId and blockchainId are required',
+      });
+    }
+
+    const contract = blockchainService.getContract(chainId);
+    if (!contract) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid chainId or blockchain not connected',
+      });
+    }
+
+    // Fetch task from blockchain
+    const task = await contract.getTask(blockchainId);
+
+    // Check if already exists in DB
+    let todo = await Todo.findByBlockchainId(chainId, blockchainId);
+
+    if (todo) {
+      // Update existing
+      todo.description = task.description;
+      todo.completed = task.completed;
+      todo.blockchainCompletedAt = task.completed
+        ? new Date(Number(task.completedAt) * 1000)
+        : null;
+      todo.syncStatus = 'synced';
+      todo.lastSyncedAt = new Date();
+      await todo.save();
+    } else {
+      // Create new
+      todo = new Todo({
+        blockchainId: blockchainId.toString(),
+        chainId,
+        transactionHash: '', // Not available from direct query
+        owner: task.owner.toLowerCase(),
+        description: task.description,
+        completed: task.completed,
+        blockchainCreatedAt: new Date(Number(task.createdAt) * 1000),
+        blockchainCompletedAt: task.completed
+          ? new Date(Number(task.completedAt) * 1000)
+          : null,
+        syncStatus: 'synced',
+      });
+      await todo.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Todo synced from blockchain',
+      data: todo,
+    });
+  } catch (error) {
+    if (error.message && error.message.includes('Task does not exist')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Task not found on blockchain',
+      });
+    }
+    next(error);
+  }
+};
+
+module.exports = {
+  getTodosByAddress,
+  getTodoById,
+  verifyTodo,
+  getUserStats,
+  syncTodoFromBlockchain,
+};

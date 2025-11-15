@@ -1,0 +1,85 @@
+# Dependencies
+node_modules/
+node_modules
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+dist/
+build/
+out/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Hardhat (Smart Contracts)
+cache/
+artifacts/
+typechain/
+typechain-types/
+coverage/
+coverage.json
+*.lcov
+
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/chain-31337
+
+# MongoDB
+data/
+*.db
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Production
+/frontend/build
+/backend/dist
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Secrets (extra safety)
+*.pem
+*.key
+secrets.json
+credentials.json
+
+# Deployment
+.vercel
+.netlify
+
+# Misc
+.turbo
