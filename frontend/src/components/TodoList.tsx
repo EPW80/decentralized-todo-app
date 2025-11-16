@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { apiService } from '../services/api';
 import TodoItem from './TodoItem';
@@ -35,6 +35,10 @@ const TodoList: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
 
   const fetchTodos = useCallback(async () => {
     if (!address) return;
@@ -88,11 +92,40 @@ const TodoList: React.FC = () => {
     fetchStats();
   };
 
-  const filteredTodos = todos.filter((todo) => {
-    if (filter === 'active') return !todo.completed && !todo.deleted;
-    if (filter === 'completed') return todo.completed && !todo.deleted;
-    return !todo.deleted;
-  });
+  // Optimistic update handlers
+  const handleOptimisticUpdate = useCallback((id: string, updates: Partial<Todo>) => {
+    setTodos(prev => prev.map(todo =>
+      todo._id === id ? { ...todo, ...updates } : todo
+    ));
+  }, []);
+
+  const handleOptimisticRevert = useCallback((id: string) => {
+    // Refetch to get the original state
+    fetchTodos();
+  }, [fetchTodos]);
+
+  // Filter todos based on selected filter
+  const filteredTodos = useMemo(() => {
+    return todos.filter((todo) => {
+      if (filter === 'active') return !todo.completed && !todo.deleted;
+      if (filter === 'completed') return todo.completed && !todo.deleted;
+      return !todo.deleted;
+    });
+  }, [todos, filter]);
+
+  // Paginate filtered todos
+  const paginatedTodos = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredTodos.slice(start, start + pageSize);
+  }, [filteredTodos, page, pageSize]);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredTodos.length / pageSize);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
 
   if (!isConnected) {
     return (
@@ -311,17 +344,82 @@ const TodoList: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-4 animate-slide-in">
-            {filteredTodos.map((todo, index) => (
-              <div 
-                key={todo._id} 
-                className="animate-slide-in"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <TodoItem todo={todo} onTodoUpdated={handleRefresh} />
+          <>
+            <div className="space-y-4 animate-slide-in">
+              {paginatedTodos.map((todo, index) => (
+                <div
+                  key={todo._id}
+                  className="animate-slide-in"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <TodoItem
+                    todo={todo}
+                    onTodoUpdated={handleRefresh}
+                    onOptimisticUpdate={handleOptimisticUpdate}
+                    onOptimisticRevert={handleOptimisticRevert}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-between glass-effect rounded-xl p-4">
+                <div className="text-sm text-gray-600">
+                  Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, filteredTodos.length)} of {filteredTodos.length} tasks
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="glass-effect px-4 py-2 rounded-lg font-medium text-gray-700 hover:shadow-glow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Previous
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (page <= 3) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`w-10 h-10 rounded-lg font-semibold transition-all duration-200 ${
+                            page === pageNum
+                              ? 'gradient-primary text-white shadow-glow'
+                              : 'glass-effect text-gray-700 hover:shadow-glow-sm'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="glass-effect px-4 py-2 rounded-lg font-medium text-gray-700 hover:shadow-glow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    Next
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -1,5 +1,5 @@
-const Todo = require('../models/Todo');
-const blockchainService = require('../services/blockchainService');
+const Todo = require("../models/Todo");
+const blockchainService = require("../services/blockchainService");
 
 /**
  * Get all todos for a specific address
@@ -12,8 +12,8 @@ const getTodosByAddress = async (req, res, next) => {
 
     const todos = await Todo.findByOwner(
       address,
-      includeCompleted !== 'false',
-      includeDeleted === 'true'
+      includeCompleted !== "false",
+      includeDeleted === "true"
     );
 
     res.json({
@@ -39,7 +39,7 @@ const getTodoById = async (req, res, next) => {
     if (!todo) {
       return res.status(404).json({
         success: false,
-        error: 'Todo not found',
+        error: "Todo not found",
       });
     }
 
@@ -65,7 +65,7 @@ const verifyTodo = async (req, res, next) => {
     if (!todo) {
       return res.status(404).json({
         success: false,
-        error: 'Todo not found',
+        error: "Todo not found",
       });
     }
 
@@ -74,7 +74,7 @@ const verifyTodo = async (req, res, next) => {
     if (!contract) {
       return res.status(500).json({
         success: false,
-        error: 'Blockchain network not available',
+        error: "Blockchain network not available",
       });
     }
 
@@ -107,7 +107,7 @@ const verifyTodo = async (req, res, next) => {
         success: true,
         data: {
           isValid: false,
-          error: 'Task not found on blockchain or has been deleted',
+          error: "Task not found on blockchain or has been deleted",
         },
       });
     }
@@ -163,7 +163,7 @@ const syncTodoFromBlockchain = async (req, res, next) => {
     if (!chainId || !blockchainId) {
       return res.status(400).json({
         success: false,
-        error: 'chainId and blockchainId are required',
+        error: "chainId and blockchainId are required",
       });
     }
 
@@ -171,7 +171,7 @@ const syncTodoFromBlockchain = async (req, res, next) => {
     if (!contract) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid chainId or blockchain not connected',
+        error: "Invalid chainId or blockchain not connected",
       });
     }
 
@@ -188,7 +188,7 @@ const syncTodoFromBlockchain = async (req, res, next) => {
       todo.blockchainCompletedAt = task.completed
         ? new Date(Number(task.completedAt) * 1000)
         : null;
-      todo.syncStatus = 'synced';
+      todo.syncStatus = "synced";
       todo.lastSyncedAt = new Date();
       await todo.save();
     } else {
@@ -196,7 +196,7 @@ const syncTodoFromBlockchain = async (req, res, next) => {
       todo = new Todo({
         blockchainId: blockchainId.toString(),
         chainId,
-        transactionHash: '', // Not available from direct query
+        transactionHash: "", // Not available from direct query
         owner: task.owner.toLowerCase(),
         description: task.description,
         completed: task.completed,
@@ -204,21 +204,21 @@ const syncTodoFromBlockchain = async (req, res, next) => {
         blockchainCompletedAt: task.completed
           ? new Date(Number(task.completedAt) * 1000)
           : null,
-        syncStatus: 'synced',
+        syncStatus: "synced",
       });
       await todo.save();
     }
 
     res.json({
       success: true,
-      message: 'Todo synced from blockchain',
+      message: "Todo synced from blockchain",
       data: todo,
     });
   } catch (error) {
-    if (error.message && error.message.includes('Task does not exist')) {
+    if (error.message && error.message.includes("Task does not exist")) {
       return res.status(404).json({
         success: false,
-        error: 'Task not found on blockchain',
+        error: "Task not found on blockchain",
       });
     }
     next(error);

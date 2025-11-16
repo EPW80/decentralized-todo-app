@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const todoSchema = new mongoose.Schema(
   {
@@ -56,8 +56,8 @@ const todoSchema = new mongoose.Schema(
     // Sync status
     syncStatus: {
       type: String,
-      enum: ['synced', 'pending', 'error'],
-      default: 'synced',
+      enum: ["synced", "pending", "error"],
+      default: "synced",
     },
     lastSyncedAt: {
       type: Date,
@@ -80,6 +80,26 @@ const todoSchema = new mongoose.Schema(
 todoSchema.index({ owner: 1, deleted: 1, completed: 1 });
 todoSchema.index({ chainId: 1, blockchainId: 1 }, { unique: true });
 
+// Performance optimization indexes
+// Index for time-based queries (e.g., recent tasks)
+todoSchema.index({ blockchainCreatedAt: -1 });
+
+// Compound index for user-specific time queries (most common query pattern)
+todoSchema.index({ owner: 1, blockchainCreatedAt: -1 });
+
+// Index for monitoring sync health and retry logic
+todoSchema.index({ syncStatus: 1, lastSyncedAt: 1 });
+
+// TTL index to automatically delete error status documents after 24 hours
+// This prevents the database from accumulating stale error records
+todoSchema.index(
+  { lastSyncedAt: 1 },
+  {
+    expireAfterSeconds: 86400, // 24 hours
+    partialFilterExpression: { syncStatus: "error" },
+  }
+);
+
 // Instance methods
 todoSchema.methods.markAsCompleted = function (blockchainCompletedAt) {
   this.completed = true;
@@ -95,7 +115,11 @@ todoSchema.methods.markAsDeleted = function () {
 };
 
 // Static methods
-todoSchema.statics.findByOwner = function (ownerAddress, includeCompleted = true, includeDeleted = false) {
+todoSchema.statics.findByOwner = function (
+  ownerAddress,
+  includeCompleted = true,
+  includeDeleted = false
+) {
   const query = {
     owner: ownerAddress.toLowerCase(),
   };
@@ -108,7 +132,8 @@ todoSchema.statics.findByOwner = function (ownerAddress, includeCompleted = true
     query.deleted = false;
   }
 
-  return this.find(query).sort({ createdAt: -1 });
+  // Use blockchainCreatedAt for sorting to leverage the compound index
+  return this.find(query).sort({ blockchainCreatedAt: -1 });
 };
 
 todoSchema.statics.findByBlockchainId = function (chainId, blockchainId) {
@@ -123,7 +148,7 @@ todoSchema.statics.countByOwner = function (ownerAddress) {
 };
 
 // Pre-save middleware
-todoSchema.pre('save', function (next) {
+todoSchema.pre("save", function (next) {
   // Ensure owner address is lowercase
   if (this.owner) {
     this.owner = this.owner.toLowerCase();
@@ -131,6 +156,6 @@ todoSchema.pre('save', function (next) {
   next();
 });
 
-const Todo = mongoose.model('Todo', todoSchema);
+const Todo = mongoose.model("Todo", todoSchema);
 
 module.exports = Todo;

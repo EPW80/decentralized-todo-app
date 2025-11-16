@@ -22,12 +22,25 @@ interface Todo {
 interface TodoItemProps {
   todo: Todo;
   onTodoUpdated: () => void;
+  onOptimisticUpdate?: (id: string, updates: Partial<Todo>) => void;
+  onOptimisticRevert?: (id: string) => void;
 }
 
-const TodoItem: React.FC<TodoItemProps> = ({ todo, onTodoUpdated }) => {
+const TodoItem: React.FC<TodoItemProps> = ({
+  todo,
+  onTodoUpdated,
+  onOptimisticUpdate,
+  onOptimisticRevert
+}) => {
   const { provider, chainId } = useWeb3();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [localTodo, setLocalTodo] = useState<Todo>(todo);
+
+  // Update local state when prop changes
+  React.useEffect(() => {
+    setLocalTodo(todo);
+  }, [todo]);
 
   const handleComplete = async () => {
     if (!provider || !chainId) {
@@ -38,16 +51,37 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onTodoUpdated }) => {
     setIsProcessing(true);
     setError(null);
 
+    // Optimistic update - update UI immediately
+    const now = new Date().toISOString();
+    const optimisticUpdate = {
+      completed: true,
+      blockchainCompletedAt: now,
+      syncStatus: 'pending' as const,
+    };
+
+    setLocalTodo(prev => ({ ...prev, ...optimisticUpdate }));
+
+    // Notify parent component for optimistic update
+    if (onOptimisticUpdate) {
+      onOptimisticUpdate(todo._id, optimisticUpdate);
+    }
+
     try {
       await blockchainService.completeTask(provider, chainId, todo.blockchainId);
 
-      // Wait a bit for backend to sync
+      // Wait for backend to sync
       setTimeout(() => {
         onTodoUpdated();
       }, 2000);
     } catch (err: any) {
       console.error('Error completing task:', err);
       setError(err.message || 'Failed to complete task');
+
+      // Revert optimistic update on error
+      setLocalTodo(todo);
+      if (onOptimisticRevert) {
+        onOptimisticRevert(todo._id);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -66,16 +100,35 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onTodoUpdated }) => {
     setIsProcessing(true);
     setError(null);
 
+    // Optimistic update - mark as deleted immediately
+    const optimisticUpdate = {
+      deleted: true,
+      syncStatus: 'pending' as const,
+    };
+
+    setLocalTodo(prev => ({ ...prev, ...optimisticUpdate }));
+
+    // Notify parent component for optimistic update
+    if (onOptimisticUpdate) {
+      onOptimisticUpdate(todo._id, optimisticUpdate);
+    }
+
     try {
       await blockchainService.deleteTask(provider, chainId, todo.blockchainId);
 
-      // Wait a bit for backend to sync
+      // Wait for backend to sync
       setTimeout(() => {
         onTodoUpdated();
       }, 2000);
     } catch (err: any) {
       console.error('Error deleting task:', err);
       setError(err.message || 'Failed to delete task');
+
+      // Revert optimistic update on error
+      setLocalTodo(todo);
+      if (onOptimisticRevert) {
+        onOptimisticRevert(todo._id);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -93,7 +146,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onTodoUpdated }) => {
   };
 
   const getSyncStatusColor = () => {
-    switch (todo.syncStatus) {
+    switch (localTodo.syncStatus) {
       case 'synced':
         return 'bg-green-100 text-green-800';
       case 'pending':
@@ -108,7 +161,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onTodoUpdated }) => {
   return (
     <div
       className={`glass-effect rounded-xl shadow-glow-sm p-6 transition-all duration-300 hover:shadow-glow group ${
-        todo.completed ? 'opacity-80' : ''
+        localTodo.completed ? 'opacity-80' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -117,12 +170,12 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onTodoUpdated }) => {
             <div className="relative mt-1">
               <input
                 type="checkbox"
-                checked={todo.completed}
+                checked={localTodo.completed}
                 onChange={handleComplete}
-                disabled={isProcessing || todo.completed}
+                disabled={isProcessing || localTodo.completed}
                 className="peer w-6 h-6 text-purple-600 rounded-lg border-2 border-purple-300 focus:ring-4 focus:ring-purple-200 disabled:opacity-50 cursor-pointer transition-all"
               />
-              {todo.completed && (
+              {localTodo.completed && (
                 <svg className="absolute inset-0 w-6 h-6 text-white pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
@@ -131,10 +184,10 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onTodoUpdated }) => {
             <div className="flex-1">
               <p
                 className={`text-lg font-medium leading-relaxed ${
-                  todo.completed ? 'line-through text-gray-500' : 'text-gray-800'
+                  localTodo.completed ? 'line-through text-gray-500' : 'text-gray-800'
                 }`}
               >
-                {todo.description}
+                {localTodo.description}
               </p>
 
               <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
@@ -142,14 +195,14 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onTodoUpdated }) => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>{formatDate(todo.blockchainCreatedAt)}</span>
+                  <span>{formatDate(localTodo.blockchainCreatedAt)}</span>
                 </div>
-                {todo.completed && todo.blockchainCompletedAt && (
+                {localTodo.completed && localTodo.blockchainCompletedAt && (
                   <div className="flex items-center gap-1.5 text-green-600">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <span>{formatDate(todo.blockchainCompletedAt)}</span>
+                    <span>{formatDate(localTodo.blockchainCompletedAt)}</span>
                   </div>
                 )}
               </div>
@@ -158,14 +211,14 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onTodoUpdated }) => {
                 <span
                   className={`text-xs font-medium px-3 py-1 rounded-full ${getSyncStatusColor()}`}
                 >
-                  {todo.syncStatus === 'synced' ? '✓ ' : todo.syncStatus === 'pending' ? '⏳ ' : '⚠️ '}
-                  {todo.syncStatus}
+                  {localTodo.syncStatus === 'synced' ? '✓ ' : localTodo.syncStatus === 'pending' ? '⏳ ' : '⚠️ '}
+                  {localTodo.syncStatus}
                 </span>
                 <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
-                  #{todo.blockchainId}
+                  #{localTodo.blockchainId}
                 </span>
                 <a
-                  href={`https://etherscan.io/tx/${todo.transactionHash}`}
+                  href={`https://etherscan.io/tx/${localTodo.transactionHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1 px-2 py-1 rounded hover:bg-purple-50 transition-colors"

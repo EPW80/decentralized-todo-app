@@ -1,5 +1,5 @@
-const { ethers } = require('ethers');
-const jwt = require('jsonwebtoken');
+const { ethers } = require("ethers");
+const jwt = require("jsonwebtoken");
 
 /**
  * Verify Ethereum signature for wallet-based authentication
@@ -17,7 +17,7 @@ const verifyWalletSignature = async (req, res, next) => {
     if (!address || !signature || !message) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: address, signature, message',
+        error: "Missing required fields: address, signature, message",
       });
     }
 
@@ -27,7 +27,7 @@ const verifyWalletSignature = async (req, res, next) => {
     if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid signature',
+        error: "Invalid signature",
       });
     }
 
@@ -35,10 +35,10 @@ const verifyWalletSignature = async (req, res, next) => {
     req.userAddress = address.toLowerCase();
     next();
   } catch (error) {
-    console.error('Signature verification error:', error);
+    console.error("Signature verification error:", error);
     return res.status(401).json({
       success: false,
-      error: 'Signature verification failed',
+      error: "Signature verification failed",
     });
   }
 };
@@ -48,12 +48,12 @@ const verifyWalletSignature = async (req, res, next) => {
  */
 const verifyJWT = (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1]; // Bearer <token>
+    const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        error: 'No token provided',
+        error: "No token provided",
       });
     }
 
@@ -63,7 +63,7 @@ const verifyJWT = (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       success: false,
-      error: 'Invalid or expired token',
+      error: "Invalid or expired token",
     });
   }
 };
@@ -72,11 +72,9 @@ const verifyJWT = (req, res, next) => {
  * Generate JWT token after successful wallet verification
  */
 const generateToken = (address) => {
-  return jwt.sign(
-    { address: address.toLowerCase() },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+  return jwt.sign({ address: address.toLowerCase() }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 };
 
 /**
@@ -88,14 +86,14 @@ const validateAddress = (req, res, next) => {
   if (!address) {
     return res.status(400).json({
       success: false,
-      error: 'Address is required',
+      error: "Address is required",
     });
   }
 
   if (!ethers.isAddress(address)) {
     return res.status(400).json({
       success: false,
-      error: 'Invalid Ethereum address format',
+      error: "Invalid Ethereum address format",
     });
   }
 
@@ -113,14 +111,14 @@ const ensureOwnership = (req, res, next) => {
   if (!req.userAddress) {
     return res.status(401).json({
       success: false,
-      error: 'Authentication required',
+      error: "Authentication required",
     });
   }
 
   if (resourceAddress && resourceAddress.toLowerCase() !== req.userAddress) {
     return res.status(403).json({
       success: false,
-      error: 'Access denied: You can only access your own resources',
+      error: "Access denied: You can only access your own resources",
     });
   }
 

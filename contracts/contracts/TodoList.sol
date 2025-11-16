@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 /**
  * @title TodoList
- * @dev Decentralized Todo List smart contract
+ * @dev Decentralized Todo List smart contract with security enhancements
  * @notice This contract allows users to create, complete, and delete tasks
+ * @dev Includes reentrancy protection, pausable functionality, and rate limiting
  */
-contract TodoList {
+contract TodoList is ReentrancyGuard, Pausable, Ownable {
     // Task structure
     struct Task {
         uint256 id;
@@ -23,10 +28,19 @@ contract TodoList {
     mapping(address => uint256[]) private userTasks;
     mapping(address => uint256) private userTaskCount;
 
+    // Rate limiting
+    mapping(address => uint256) private lastActionTimestamp;
+    uint256 private constant ACTION_COOLDOWN = 1 seconds;
+
+    // Maximum tasks per user (optional limit for DoS protection)
+    uint256 private constant MAX_TASKS_PER_USER = 10000;
+
     // Events
-    event TaskCreated(uint256 indexed taskId, address indexed owner, string description);
-    event TaskCompleted(uint256 indexed taskId, address indexed owner);
-    event TaskDeleted(uint256 indexed taskId, address indexed owner);
+    event TaskCreated(uint256 indexed taskId, address indexed owner, string description, uint256 timestamp);
+    event TaskCompleted(uint256 indexed taskId, address indexed owner, uint256 timestamp);
+    event TaskDeleted(uint256 indexed taskId, address indexed owner, uint256 timestamp);
+    event ContractPaused(address indexed by, uint256 timestamp);
+    event ContractUnpaused(address indexed by, uint256 timestamp);
 
     // Modifiers
     modifier taskExists(uint256 _taskId) {
@@ -39,14 +53,37 @@ contract TodoList {
         _;
     }
 
+    modifier rateLimited() {
+        require(
+            block.timestamp >= lastActionTimestamp[msg.sender] + ACTION_COOLDOWN,
+            "Please wait before next action"
+        );
+        lastActionTimestamp[msg.sender] = block.timestamp;
+        _;
+    }
+
+    /**
+     * @dev Constructor - initializes the contract owner
+     */
+    constructor() Ownable(msg.sender) {
+        // Contract is deployed in unpaused state
+    }
+
     /**
      * @dev Create a new task
      * @param _description The description of the task
      * @return taskId The ID of the created task
      */
-    function createTask(string memory _description) external returns (uint256) {
+    function createTask(string memory _description)
+        external
+        nonReentrant
+        whenNotPaused
+        rateLimited
+        returns (uint256)
+    {
         require(bytes(_description).length > 0, "Description cannot be empty");
         require(bytes(_description).length <= 500, "Description too long");
+        require(userTaskCount[msg.sender] < MAX_TASKS_PER_USER, "Maximum tasks limit reached");
 
         taskCounter++;
         uint256 taskId = taskCounter;
@@ -64,7 +101,7 @@ contract TodoList {
         userTasks[msg.sender].push(taskId);
         userTaskCount[msg.sender]++;
 
-        emit TaskCreated(taskId, msg.sender, _description);
+        emit TaskCreated(taskId, msg.sender, _description, block.timestamp);
 
         return taskId;
     }
@@ -75,6 +112,9 @@ contract TodoList {
      */
     function completeTask(uint256 _taskId)
         external
+        nonReentrant
+        whenNotPaused
+        rateLimited
         taskExists(_taskId)
         onlyTaskOwner(_taskId)
     {
@@ -83,7 +123,7 @@ contract TodoList {
         tasks[_taskId].completed = true;
         tasks[_taskId].completedAt = block.timestamp;
 
-        emit TaskCompleted(_taskId, msg.sender);
+        emit TaskCompleted(_taskId, msg.sender, block.timestamp);
     }
 
     /**
@@ -92,6 +132,9 @@ contract TodoList {
      */
     function deleteTask(uint256 _taskId)
         external
+        nonReentrant
+        whenNotPaused
+        rateLimited
         taskExists(_taskId)
         onlyTaskOwner(_taskId)
     {
@@ -106,9 +149,27 @@ contract TodoList {
         }
 
         userTaskCount[msg.sender]--;
-        emit TaskDeleted(_taskId, msg.sender);
+        emit TaskDeleted(_taskId, msg.sender, block.timestamp);
 
         delete tasks[_taskId];
+    }
+
+    /**
+     * @dev Pause the contract - only owner can call
+     * @notice Pauses all state-changing functions for emergency situations
+     */
+    function pause() external onlyOwner {
+        _pause();
+        emit ContractPaused(msg.sender, block.timestamp);
+    }
+
+    /**
+     * @dev Unpause the contract - only owner can call
+     * @notice Resumes normal contract operations
+     */
+    function unpause() external onlyOwner {
+        _unpause();
+        emit ContractUnpaused(msg.sender, block.timestamp);
     }
 
     /**

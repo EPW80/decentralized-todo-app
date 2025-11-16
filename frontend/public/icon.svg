@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="128" fill="url(#gradient)"/>
+
+  <!-- Checkmark circle (blockchain node) -->
+  <circle cx="256" cy="200" r="80" fill="white" opacity="0.9"/>
+  <path d="M 226 200 L 246 220 L 286 180" stroke="#667eea" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Todo list lines -->
+  <rect x="140" y="310" width="232" height="20" rx="10" fill="white" opacity="0.9"/>
+  <rect x="140" y="350" width="180" height="20" rx="10" fill="white" opacity="0.7"/>
+  <rect x="140" y="390" width="200" height="20" rx="10" fill="white" opacity="0.7"/>
+
+  <!-- Blockchain connection dots -->
+  <circle cx="120" cy="200" r="12" fill="white" opacity="0.6"/>
+  <circle cx="392" cy="200" r="12" fill="white" opacity="0.6"/>
+  <line x1="136" y1="200" x2="176" y2="200" stroke="white" stroke-width="4" opacity="0.4"/>
+  <line x1="336" y1="200" x2="376" y2="200" stroke="white" stroke-width="4" opacity="0.4"/>
+</svg>

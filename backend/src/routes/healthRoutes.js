@@ -1,20 +1,23 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const blockchainService = require('../services/blockchainService');
+const express = require("express");
+const mongoose = require("mongoose");
+const blockchainService = require("../services/blockchainService");
 
 const router = express.Router();
 
 // Health check endpoint
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const health = {
-      status: 'ok',
+      status: "ok",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
+      environment: process.env.NODE_ENV || "development",
       services: {
-        database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-        blockchain: blockchainService.isInitialized() ? 'connected' : 'disconnected',
+        database:
+          mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+        blockchain: blockchainService.isInitialized()
+          ? "connected"
+          : "disconnected",
       },
     };
 
@@ -24,13 +27,16 @@ router.get('/', async (req, res) => {
       health.blockchain = networkInfo;
     }
 
-    const statusCode = health.services.database === 'connected' &&
-                       health.services.blockchain === 'connected' ? 200 : 503;
+    const statusCode =
+      health.services.database === "connected" &&
+      health.services.blockchain === "connected"
+        ? 200
+        : 503;
 
     res.status(statusCode).json(health);
   } catch (error) {
     res.status(500).json({
-      status: 'error',
+      status: "error",
       message: error.message,
     });
   }

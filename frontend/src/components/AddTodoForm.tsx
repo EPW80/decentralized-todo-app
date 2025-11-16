@@ -42,7 +42,7 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
         11155420: 'Optimism Sepolia',
       };
       const supportedNetworks = Object.entries(networkNames)
-        .map(([id, name]) => name)
+        .map(([_, name]) => name)
         .join(', ');
       setError(`Unsupported network. Please switch to one of: ${supportedNetworks}`);
       return;
@@ -73,9 +73,9 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
       onTodoCreated();
 
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating task:', err);
-      const errorMessage = err.message || 'Failed to create task';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create task';
 
       // Provide helpful error messages
       if (errorMessage.includes('Contract not available')) {
