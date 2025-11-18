@@ -12,6 +12,12 @@
     "deploy:mumbai": "hardhat run scripts/deploy.js --network polygonMumbai",
     "deploy:arbitrum": "hardhat run scripts/deploy.js --network arbitrumGoerli",
     "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet",
+    "deploy:proxy": "hardhat run scripts/deploy-proxy.js",
+    "deploy:proxy:localhost": "hardhat run scripts/deploy-proxy.js --network localhost",
+    "deploy:proxy:sepolia": "hardhat run scripts/deploy-proxy.js --network sepolia",
+    "upgrade:proxy": "hardhat run scripts/upgrade-proxy.js",
+    "upgrade:proxy:localhost": "hardhat run scripts/upgrade-proxy.js --network localhost",
+    "upgrade:proxy:sepolia": "hardhat run scripts/upgrade-proxy.js --network sepolia",
     "node": "hardhat node",
     "dev": "hardhat node",
     "clean": "hardhat clean",
@@ -36,6 +42,8 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.1",
+    "@openzeppelin/contracts-upgradeable": "^5.0.1",
+    "@openzeppelin/hardhat-upgrades": "^3.0.0",
     "dotenv": "^17.2.3"
   }
 }

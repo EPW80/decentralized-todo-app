@@ -99,7 +99,7 @@ const TodoList: React.FC = () => {
     ));
   }, []);
 
-  const handleOptimisticRevert = useCallback((id: string) => {
+  const handleOptimisticRevert = useCallback(() => {
     // Refetch to get the original state
     fetchTodos();
   }, [fetchTodos]);

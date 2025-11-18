@@ -1,5 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "@openzeppelin/hardhat-upgrades";
 import "dotenv/config";
 
 // Helper to get accounts array - only include if valid private key exists
@@ -14,7 +15,7 @@ const getAccounts = () => {
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.20",
+    version: "0.8.22",
     settings: {
       optimizer: {
         enabled: true,
@@ -70,6 +71,7 @@ const config: HardhatUserConfig = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
+    root: "../",
   },
   mocha: {
     timeout: 40000,

@@ -1,5 +1,5 @@
 import { BrowserProvider, Contract } from 'ethers';
-import TodoListABI from '../contracts/TodoListABI.json';
+import TodoListABI from '../contracts/TodoListV2ABI.json';
 
 interface TaskStruct {
   id: bigint;
