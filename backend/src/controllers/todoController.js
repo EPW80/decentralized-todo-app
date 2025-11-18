@@ -84,7 +84,8 @@ const verifyTodo = async (req, res, next) => {
       const isValid =
         blockchainTask.owner.toLowerCase() === todo.owner &&
         blockchainTask.description === todo.description &&
-        blockchainTask.completed === todo.completed;
+        blockchainTask.completed === todo.completed &&
+        blockchainTask.deleted === todo.deleted;
 
       res.json({
         success: true,
@@ -93,11 +94,13 @@ const verifyTodo = async (req, res, next) => {
           cached: {
             description: todo.description,
             completed: todo.completed,
+            deleted: todo.deleted,
             owner: todo.owner,
           },
           blockchain: {
             description: blockchainTask.description,
             completed: blockchainTask.completed,
+            deleted: blockchainTask.deleted,
             owner: blockchainTask.owner.toLowerCase(),
           },
         },
@@ -188,6 +191,10 @@ const syncTodoFromBlockchain = async (req, res, next) => {
       todo.blockchainCompletedAt = task.completed
         ? new Date(Number(task.completedAt) * 1000)
         : null;
+      todo.deleted = task.deleted;
+      todo.deletedAt = task.deleted && task.deletedAt
+        ? new Date(Number(task.deletedAt) * 1000)
+        : null;
       todo.syncStatus = "synced";
       todo.lastSyncedAt = new Date();
       await todo.save();
@@ -203,6 +210,10 @@ const syncTodoFromBlockchain = async (req, res, next) => {
         blockchainCreatedAt: new Date(Number(task.createdAt) * 1000),
         blockchainCompletedAt: task.completed
           ? new Date(Number(task.completedAt) * 1000)
+          : null,
+        deleted: task.deleted,
+        deletedAt: task.deleted && task.deletedAt
+          ? new Date(Number(task.deletedAt) * 1000)
           : null,
         syncStatus: "synced",
       });
@@ -225,10 +236,54 @@ const syncTodoFromBlockchain = async (req, res, next) => {
   }
 };
 
+/**
+ * Restore a deleted todo
+ * POST /api/todos/restore
+ */
+const restoreTodo = async (req, res, next) => {
+  try {
+    const { id } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: "Todo ID is required",
+      });
+    }
+
+    const todo = await Todo.findById(id);
+
+    if (!todo) {
+      return res.status(404).json({
+        success: false,
+        error: "Todo not found",
+      });
+    }
+
+    if (!todo.deleted) {
+      return res.status(400).json({
+        success: false,
+        error: "Todo is not deleted",
+      });
+    }
+
+    await todo.markAsRestored();
+
+    res.json({
+      success: true,
+      message: "Todo restored successfully",
+      data: todo,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTodosByAddress,
   getTodoById,
   verifyTodo,
   getUserStats,
   syncTodoFromBlockchain,
+  restoreTodo,
 };

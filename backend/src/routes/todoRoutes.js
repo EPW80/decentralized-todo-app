@@ -5,6 +5,7 @@ const {
   verifyTodo,
   getUserStats,
   syncTodoFromBlockchain,
+  restoreTodo,
 } = require("../controllers/todoController");
 const { validateAddress } = require("../middleware/auth");
 
@@ -30,5 +31,10 @@ router.get("/verify/:id", verifyTodo);
 // POST /api/todos/sync
 // Body: { chainId, blockchainId }
 router.post("/sync", syncTodoFromBlockchain);
+
+// Restore a deleted todo
+// POST /api/todos/restore
+// Body: { id }
+router.post("/restore", restoreTodo);
 
 module.exports = router;

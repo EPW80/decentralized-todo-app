@@ -47,7 +47,8 @@ const loadContractAddresses = () => {
         const deploymentData = JSON.parse(
           fs.readFileSync(deploymentFile, "utf8")
         );
-        addresses[network.chainId] = deploymentData.todoListAddress;
+        // TodoListV2 uses proxy pattern, fallback to old format for backward compatibility
+        addresses[network.chainId] = deploymentData.proxy || deploymentData.todoListAddress;
       } else {
         console.warn(
           `No deployment file found for ${network.name} (chainId: ${network.chainId})`
@@ -69,7 +70,7 @@ const loadContractABI = () => {
   try {
     const abiPath = path.join(
       __dirname,
-      "../../../contracts/artifacts/contracts/TodoList.sol/TodoList.json"
+      "../../../contracts/artifacts/contracts/TodoListV2.sol/TodoListV2.json"
     );
     const artifact = JSON.parse(fs.readFileSync(abiPath, "utf8"));
     return artifact.abi;

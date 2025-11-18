@@ -137,6 +137,20 @@ class BlockchainService {
       }
     });
 
+    // Listen for TaskRestored events
+    contract.on('TaskRestored', async (taskId, owner, timestamp, event) => {
+      try {
+        console.log(`[${chainId}] TaskRestored event:`, {
+          taskId: taskId.toString(),
+          blockNumber: event.log.blockNumber,
+        });
+
+        await this.syncTaskRestored(chainId, taskId);
+      } catch (error) {
+        console.error(`Error handling TaskRestored event:`, error);
+      }
+    });
+
     console.log(`✓ Event listeners started for chainId: ${chainId}`);
   }
 
@@ -201,6 +215,23 @@ class BlockchainService {
       console.log(`✓ Synced TaskDeleted: ${blockchainId} on chain ${chainId}`);
     } catch (error) {
       console.error('Error syncing TaskDeleted:', error);
+    }
+  }
+
+  async syncTaskRestored(chainId, taskId) {
+    try {
+      const blockchainId = taskId.toString();
+      const todo = await Todo.findByBlockchainId(chainId, blockchainId);
+
+      if (!todo) {
+        console.error(`Todo ${blockchainId} not found for restoration on chain ${chainId}`);
+        return;
+      }
+
+      await todo.markAsRestored();
+      console.log(`✓ Synced TaskRestored: ${blockchainId} on chain ${chainId}`);
+    } catch (error) {
+      console.error('Error syncing TaskRestored:', error);
     }
   }
 
@@ -376,8 +407,11 @@ class BlockchainService {
       // Get TaskDeleted events
       const deletedEvents = await contract.queryFilter(filter.TaskDeleted(), fromBlock, currentBlock);
 
+      // Get TaskRestored events
+      const restoredEvents = await contract.queryFilter(filter.TaskRestored(), fromBlock, currentBlock);
+
       console.log(
-        `Found ${createdEvents.length} created, ${completedEvents.length} completed, ${deletedEvents.length} deleted events to resync`
+        `Found ${createdEvents.length} created, ${completedEvents.length} completed, ${deletedEvents.length} deleted, ${restoredEvents.length} restored events to resync`
       );
 
       // Process events in order
@@ -394,6 +428,11 @@ class BlockchainService {
       for (const event of deletedEvents) {
         const [taskId] = event.args;
         await this.syncTaskDeleted(chainId, taskId);
+      }
+
+      for (const event of restoredEvents) {
+        const [taskId] = event.args;
+        await this.syncTaskRestored(chainId, taskId);
       }
 
       console.log(`✓ Resync completed for chain ${chainId}`);

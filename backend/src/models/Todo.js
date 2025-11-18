@@ -70,6 +70,10 @@ const todoSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true, // Adds createdAt and updatedAt for MongoDB
@@ -110,6 +114,15 @@ todoSchema.methods.markAsCompleted = function (blockchainCompletedAt) {
 
 todoSchema.methods.markAsDeleted = function () {
   this.deleted = true;
+  this.deletedAt = new Date();
+  this.lastSyncedAt = new Date();
+  return this.save();
+};
+
+todoSchema.methods.markAsRestored = function () {
+  this.deleted = false;
+  this.deletedAt = null;
+  this.syncStatus = "synced";
   this.lastSyncedAt = new Date();
   return this.save();
 };
