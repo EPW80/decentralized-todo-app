@@ -10,9 +10,14 @@ class BlockchainService {
     this.lastProcessedBlock = {};
     this.reconnectAttempts = {};
     this.eventListenersActive = {};
-    this.maxReconnectAttempts = 5;
-    this.reconnectDelay = 5000; // 5 seconds
-    this.confirmations = 12; // Number of blocks to wait before considering a block final
+    this.eventHandlers = {}; // Store handler references to prevent memory leaks
+
+    // Configurable parameters from environment
+    this.maxReconnectAttempts = parseInt(process.env.MAX_RECONNECT_ATTEMPTS) || 5;
+    this.reconnectDelay = parseInt(process.env.RECONNECT_BASE_DELAY) || 5000; // 5 seconds
+
+    // Chain-specific confirmations (will be set per chain)
+    this.confirmations = {};
   }
 
   async initialize() {
@@ -31,6 +36,11 @@ class BlockchainService {
         }
 
         try {
+          // Set chain-specific confirmations from environment or defaults
+          const envKey = `CONFIRMATION_BLOCKS_${networkKey.toUpperCase()}`;
+          const defaultConfirmations = this.getDefaultConfirmations(network.chainId);
+          this.confirmations[network.chainId] = parseInt(process.env[envKey]) || defaultConfirmations;
+
           // Create provider
           const provider = new ethers.JsonRpcProvider(network.rpcUrl);
           this.providers[network.chainId] = provider;
@@ -42,7 +52,7 @@ class BlockchainService {
           // Start event listeners
           this.startEventListeners(network.chainId);
 
-          console.log(`✓ Connected to ${network.name} (chainId: ${network.chainId})`);
+          console.log(`✓ Connected to ${network.name} (chainId: ${network.chainId}, confirmations: ${this.confirmations[network.chainId]})`);
         } catch (error) {
           console.error(`Error initializing ${network.name}:`, error.message);
         }
@@ -53,6 +63,25 @@ class BlockchainService {
       console.error('Error initializing blockchain service:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get default confirmation blocks based on chain characteristics
+   */
+  getDefaultConfirmations(chainId) {
+    const confirmationDefaults = {
+      1: 12,        // Ethereum Mainnet - 12 blocks (~3 minutes)
+      11155111: 12, // Sepolia - 12 blocks
+      137: 128,     // Polygon Mainnet - 128 blocks (~5 minutes)
+      80001: 128,   // Mumbai - 128 blocks
+      42161: 1,     // Arbitrum One - 1 block (fast finality)
+      421613: 1,    // Arbitrum Goerli - 1 block
+      10: 1,        // Optimism - 1 block (fast finality)
+      11155420: 1,  // Optimism Sepolia - 1 block
+      31337: 1      // Localhost/Hardhat - 1 block
+    };
+
+    return confirmationDefaults[chainId] || 12; // Default to 12 if unknown
   }
 
   async startEventListeners(chainId) {
@@ -358,8 +387,9 @@ class BlockchainService {
     try {
       console.log(`Handling reorganization for chain ${chainId} at block ${blockNumber}`);
 
-      // Calculate safe block (block with enough confirmations)
-      const safeBlock = blockNumber - this.confirmations;
+      // Calculate safe block (block with enough confirmations) - now chain-specific
+      const confirmations = this.confirmations[chainId] || 12;
+      const safeBlock = blockNumber - confirmations;
 
       if (safeBlock < 0) {
         // Too early, not enough blocks for confirmations
@@ -370,7 +400,7 @@ class BlockchainService {
 
       // If our last processed block is beyond the safe block, we need to resync
       if (lastProcessed > safeBlock) {
-        console.log(`Resyncing from block ${safeBlock} for chain ${chainId}`);
+        console.log(`Resyncing from block ${safeBlock} for chain ${chainId} (${confirmations} confirmations)`);
         await this.resyncFromBlock(chainId, safeBlock);
       }
     } catch (error) {

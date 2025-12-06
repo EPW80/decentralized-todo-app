@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { blockchainService } from '../services/blockchain';
+import { useNetworkTheme } from '../hooks/useNetworkTheme';
+import { HexagonPattern, NetworkNodes } from './patterns';
+import NetworkSwitcher from './NetworkSwitcher';
+import { ActiveGlow } from './glass';
+import CopyButton from './CopyButton';
+import Tooltip from './Tooltip';
 
 const WalletConnect: React.FC = () => {
   const { address, chainId, isConnecting, isConnected, error, connect, disconnect } = useWeb3();
   const [showError, setShowError] = useState(false);
+  const [showNetworkSwitcher, setShowNetworkSwitcher] = useState(false);
+  const networkTheme = useNetworkTheme();
 
   useEffect(() => {
     if (error) {
@@ -68,6 +76,11 @@ const WalletConnect: React.FC = () => {
 
   return (
     <>
+      {/* Network Switcher Modal */}
+      {showNetworkSwitcher && (
+        <NetworkSwitcher onClose={() => setShowNetworkSwitcher(false)} />
+      )}
+
       {/* Error Modal Overlay */}
       {error && showError && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -78,8 +91,11 @@ const WalletConnect: React.FC = () => {
           ></div>
 
           {/* Modal Content */}
-          <div className="relative glass-effect border-2 border-red-400 rounded-3xl shadow-glow max-w-md w-full animate-scale-in">
-            <div className="p-8">
+          <div className="relative glass-effect border-2 border-red-400 rounded-3xl shadow-glow max-w-md w-full animate-scale-in overflow-hidden">
+            {/* Background patterns */}
+            <HexagonPattern opacity={0.05} size={35} className="rounded-3xl" color="#ef4444" />
+            <NetworkNodes nodeCount={8} animated={true} color="#ef4444" className="rounded-3xl" />
+            <div className="p-8 relative z-10">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
                   <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -122,7 +138,11 @@ const WalletConnect: React.FC = () => {
           <button
             onClick={connect}
             disabled={isConnecting}
-            className="group relative gradient-primary text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-glow transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] transform"
+            className="group relative text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-glow transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] transform"
+            style={{
+              background: isConnected ? networkTheme.gradient : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              boxShadow: isConnected ? `0 10px 40px ${networkTheme.glowColor}` : undefined,
+            }}
           >
             <div className="flex items-center gap-2.5">
               <svg className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" viewBox="0 0 40 40" fill="none">
@@ -147,58 +167,97 @@ const WalletConnect: React.FC = () => {
           </button>
         ) : (
           <div className="flex flex-wrap items-center gap-2.5 animate-slide-in">
-            {/* Network Status */}
-            <div className="glass-effect px-4 py-2.5 rounded-xl shadow-sm hover:shadow-glow-sm transition-all duration-300 group">
-              <div className="flex items-center gap-2.5">
+            {/* Enhanced Network Badge with Switcher */}
+            <button
+              onClick={() => setShowNetworkSwitcher(true)}
+              className="group relative px-4 py-2.5 rounded-xl shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] overflow-hidden"
+              style={{
+                background: networkTheme.gradient,
+                boxShadow: `0 4px 16px ${networkTheme.glowColor}`,
+              }}
+            >
+              {/* Animated shimmer effect */}
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity"
+                style={{
+                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)',
+                  animation: 'shimmer 2s infinite',
+                }}
+              />
+
+              <div className="relative z-10 flex items-center gap-2.5">
+                {/* Status indicator */}
                 <div className="relative flex items-center justify-center">
                   <span
-                    className={`inline-block w-2 h-2 rounded-full ${
-                      isSupported ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.7)]' : 'bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.7)]'
-                    }`}
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{
+                      backgroundColor: '#ffffff',
+                      boxShadow: '0 0 8px rgba(255, 255, 255, 0.9)',
+                    }}
                   />
                   <span
-                    className={`absolute inset-0 w-2 h-2 rounded-full animate-ping ${
-                      isSupported ? 'bg-green-500' : 'bg-yellow-500'
-                    }`}
+                    className="absolute inset-0 w-2 h-2 rounded-full animate-ping"
+                    style={{ backgroundColor: '#ffffff' }}
                   />
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                    {chainId && getNetworkName(chainId)}
-                  </span>
-                  {!isSupported && chainId && (
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-medium text-yellow-600 flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        Unsupported
-                      </span>
-                      <button
-                        onClick={switchToSepolia}
-                        className="text-xs font-semibold text-purple-600 hover:text-purple-700 underline text-left transition-colors"
-                      >
-                        Switch to Sepolia
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
 
-            {/* Address Display */}
-            <div className="glass-effect px-4 py-2.5 rounded-xl shadow-sm hover:shadow-glow-sm transition-all duration-300 group cursor-pointer">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 gradient-primary rounded-lg flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-200">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                {/* Network name */}
+                <span className="text-white font-bold text-sm">
+                  {chainId && getNetworkName(chainId)}
+                </span>
+
+                {/* Network icon */}
+                <svg className="w-4 h-4 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+
+                {/* Switch icon */}
+                <svg className="w-4 h-4 text-white/70 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </div>
+
+              {/* Unsupported network warning */}
+              {!isSupported && chainId && (
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <span className="text-sm font-mono font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  {address && formatAddress(address)}
-                </span>
-              </div>
-            </div>
+              )}
+            </button>
+
+            {/* Address Display with Copy and Hover Preview */}
+            <ActiveGlow
+              active={isConnected && isSupported}
+              intensity="normal"
+              color="custom"
+              customColor={networkTheme.glowColor}
+              pulse={false}
+            >
+              <Tooltip content={address || ''} position="bottom" delay={200}>
+                <div className="glass-effect px-4 py-2.5 rounded-xl shadow-sm transition-all duration-300 group hover:scale-[1.02]">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-200"
+                      style={{ background: networkTheme.gradient }}
+                    >
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+
+                    <CopyButton
+                      text={address || ''}
+                      displayText={address && formatAddress(address)}
+                      variant="both"
+                      className="text-sm bg-clip-text text-transparent"
+                      style={{ backgroundImage: networkTheme.gradient }}
+                    />
+                  </div>
+                </div>
+              </Tooltip>
+            </ActiveGlow>
 
             {/* Disconnect Button */}
             <button

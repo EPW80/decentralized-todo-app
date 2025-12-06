@@ -363,8 +363,8 @@ If you encounter issues, check:
 - Responsive design with TailwindCSS
 - Loading and error states
 - Transaction hash links
-
 ---
+
 
 ## 📈 Project Completion
 

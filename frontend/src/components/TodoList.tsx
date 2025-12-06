@@ -3,6 +3,7 @@ import { useWeb3 } from '../contexts/Web3Context';
 import { apiService } from '../services/api';
 import TodoItem from './TodoItem';
 import AddTodoForm from './AddTodoForm';
+import { HexagonPattern, NetworkNodes, DigitalGrid, ChainLinkPattern } from './patterns';
 
 interface Todo {
   _id: string;
@@ -130,19 +131,23 @@ const TodoList: React.FC = () => {
   if (!isConnected) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 animate-slide-in">
-        <div className="glass-effect rounded-2xl shadow-glow p-12 text-center">
-          <div className="w-24 h-24 gradient-primary rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-glow">
+        <div className="glass-effect rounded-2xl shadow-glow p-12 text-center relative overflow-hidden">
+          {/* Background patterns */}
+          <NetworkNodes nodeCount={15} animated={true} />
+          <HexagonPattern opacity={0.06} size={40} />
+
+          <div className="w-24 h-24 gradient-primary rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-glow relative z-10">
             <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-3">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-3 relative z-10">
             Welcome to Decentralized Todo
           </h2>
-          <p className="text-gray-600 text-lg mb-6">
+          <p className="text-gray-600 text-lg mb-6 relative z-10">
             Connect your wallet to start managing your tasks on the blockchain 🔐
           </p>
-          <div className="flex flex-col gap-3 text-sm text-gray-500 max-w-md mx-auto">
+          <div className="flex flex-col gap-3 text-sm text-gray-500 max-w-md mx-auto relative z-10">
             <div className="flex items-center gap-2">
               <span className="text-green-500">✓</span>
               <span>Secure and immutable task storage</span>
@@ -169,8 +174,9 @@ const TodoList: React.FC = () => {
 
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 animate-slide-in">
-          <div className="glass-effect rounded-xl shadow-glow-sm p-5 hover:shadow-glow transition-all duration-300 group">
-            <div className="flex items-center justify-between mb-2">
+          <div className="glass-effect rounded-xl shadow-glow-sm p-5 hover:shadow-glow transition-all duration-300 group relative overflow-hidden">
+            <HexagonPattern opacity={0.05} size={25} className="rounded-xl" />
+            <div className="flex items-center justify-between mb-2 relative z-10">
               <p className="text-sm font-medium text-gray-600">Total Tasks</p>
               <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                 <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -179,10 +185,11 @@ const TodoList: React.FC = () => {
                 </svg>
               </div>
             </div>
-            <p className="text-3xl font-bold text-gray-800">{stats.total}</p>
+            <p className="text-3xl font-bold text-gray-800 relative z-10">{stats.total}</p>
           </div>
-          <div className="glass-effect rounded-xl shadow-glow-sm p-5 hover:shadow-glow transition-all duration-300 group">
-            <div className="flex items-center justify-between mb-2">
+          <div className="glass-effect rounded-xl shadow-glow-sm p-5 hover:shadow-glow transition-all duration-300 group relative overflow-hidden">
+            <HexagonPattern opacity={0.05} size={25} className="rounded-xl" />
+            <div className="flex items-center justify-between mb-2 relative z-10">
               <p className="text-sm font-medium text-gray-600">Active</p>
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                 <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -190,10 +197,11 @@ const TodoList: React.FC = () => {
                 </svg>
               </div>
             </div>
-            <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{stats.active}</p>
+            <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent relative z-10">{stats.active}</p>
           </div>
-          <div className="glass-effect rounded-xl shadow-glow-sm p-5 hover:shadow-glow transition-all duration-300 group">
-            <div className="flex items-center justify-between mb-2">
+          <div className="glass-effect rounded-xl shadow-glow-sm p-5 hover:shadow-glow transition-all duration-300 group relative overflow-hidden">
+            <HexagonPattern opacity={0.05} size={25} className="rounded-xl" />
+            <div className="flex items-center justify-between mb-2 relative z-10">
               <p className="text-sm font-medium text-gray-600">Completed</p>
               <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                 <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -201,10 +209,11 @@ const TodoList: React.FC = () => {
                 </svg>
               </div>
             </div>
-            <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{stats.completed}</p>
+            <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent relative z-10">{stats.completed}</p>
           </div>
-          <div className="glass-effect rounded-xl shadow-glow-sm p-5 hover:shadow-glow transition-all duration-300 group">
-            <div className="flex items-center justify-between mb-2">
+          <div className="glass-effect rounded-xl shadow-glow-sm p-5 hover:shadow-glow transition-all duration-300 group relative overflow-hidden">
+            <HexagonPattern opacity={0.05} size={25} className="rounded-xl" />
+            <div className="flex items-center justify-between mb-2 relative z-10">
               <p className="text-sm font-medium text-gray-600">Completion Rate</p>
               <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                 <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -212,13 +221,16 @@ const TodoList: React.FC = () => {
                 </svg>
               </div>
             </div>
-            <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">{stats.completionRate}%</p>
+            <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent relative z-10">{stats.completionRate}%</p>
           </div>
         </div>
       )}
 
-      <div className="glass-effect rounded-2xl shadow-glow p-8 animate-slide-in">
-        <div className="flex items-center justify-between mb-6">
+      <div className="glass-effect rounded-2xl shadow-glow p-8 animate-slide-in relative overflow-hidden">
+        {/* Background patterns */}
+        <DigitalGrid opacity={0.04} gridSize={30} className="rounded-2xl" />
+        <HexagonPattern opacity={0.03} size={35} className="rounded-2xl" />
+        <div className="flex items-center justify-between mb-6 relative z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
               <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -239,7 +251,7 @@ const TodoList: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-8 animate-slide-in">
+        <div className="flex flex-wrap gap-3 mb-8 animate-slide-in relative z-10">
           <button
             onClick={() => setFilter('all')}
             className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
@@ -297,23 +309,27 @@ const TodoList: React.FC = () => {
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 relative z-10">
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="glass-effect rounded-2xl shadow-glow p-12 text-center animate-scale-in">
-            <div className="inline-block relative">
+          <div className="glass-effect rounded-2xl shadow-glow p-12 text-center animate-scale-in relative overflow-hidden">
+            <NetworkNodes nodeCount={12} animated={true} />
+            <ChainLinkPattern count={3} animated={true} className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-20" />
+            <div className="inline-block relative z-10">
               <div className="w-20 h-20 gradient-primary rounded-full animate-pulse"></div>
               <div className="absolute inset-0 w-20 h-20 gradient-primary rounded-full animate-ping opacity-50"></div>
             </div>
-            <p className="mt-6 text-gray-600 font-medium text-lg">Loading your tasks from the blockchain...</p>
-            <p className="mt-2 text-gray-500 text-sm">This may take a moment</p>
+            <p className="mt-6 text-gray-600 font-medium text-lg relative z-10">Loading your tasks from the blockchain...</p>
+            <p className="mt-2 text-gray-500 text-sm relative z-10">This may take a moment</p>
           </div>
         ) : filteredTodos.length === 0 ? (
-          <div className="glass-effect rounded-2xl shadow-glow p-12 text-center animate-scale-in">
-            <div className="w-32 h-32 mx-auto mb-6 gradient-primary rounded-3xl flex items-center justify-center shadow-glow-sm animate-float">
+          <div className="glass-effect rounded-2xl shadow-glow p-12 text-center animate-scale-in relative overflow-hidden">
+            <HexagonPattern opacity={0.06} size={40} className="rounded-2xl" />
+            <DigitalGrid opacity={0.04} gridSize={35} className="rounded-2xl" />
+            <div className="w-32 h-32 mx-auto mb-6 gradient-primary rounded-3xl flex items-center justify-center shadow-glow-sm animate-float relative z-10">
               {filter === 'all' ? (
                 <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -328,14 +344,14 @@ const TodoList: React.FC = () => {
                 </svg>
               )}
             </div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-3">
+            <h3 className="text-2xl font-bold text-gray-800 mb-3 relative z-10">
               {filter === 'all'
                 ? '🎉 Ready to Start!'
                 : filter === 'active'
                 ? '✨ All Caught Up!'
                 : '🎯 No Completed Tasks Yet'}
             </h3>
-            <p className="text-gray-600 text-lg max-w-md mx-auto">
+            <p className="text-gray-600 text-lg max-w-md mx-auto relative z-10">
               {filter === 'all'
                 ? 'Create your first task above and start managing your todos on the blockchain!'
                 : filter === 'active'
@@ -345,7 +361,7 @@ const TodoList: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="space-y-4 animate-slide-in">
+            <div className="space-y-4 animate-slide-in relative z-10">
               {paginatedTodos.map((todo, index) => (
                 <div
                   key={todo._id}
