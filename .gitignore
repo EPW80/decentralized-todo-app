@@ -87,3 +87,6 @@ credentials.json
 
 # Misc
 .turbo
+
+# Claude Code planning files
+claude.md
