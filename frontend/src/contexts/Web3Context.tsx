@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { BrowserProvider } from 'ethers';
+import { apiService } from '../services/api';
 
 interface WalletState {
   address: string | null;
@@ -39,6 +41,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     error: null,
   });
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
+  const isConnectingRef = useRef(false);
 
   // Check if MetaMask is installed
   const checkMetaMask = () => {
@@ -52,16 +55,53 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     return true;
   };
 
+  // Authenticate with backend
+  const authenticate = async (address: string, browserProvider: BrowserProvider) => {
+    try {
+      // Get nonce from backend
+      const nonceResponse = await apiService.getNonce(address);
+      const { message } = nonceResponse;
+
+      // Sign the message with wallet
+      const signer = await browserProvider.getSigner();
+      const signature = await signer.signMessage(message);
+
+      // Send signature to backend to get JWT token
+      const loginResponse = await apiService.login(address, signature, message);
+
+      if (loginResponse.success && loginResponse.token) {
+        // Store token in localStorage
+        localStorage.setItem('authToken', loginResponse.token);
+        console.log('✓ Authenticated successfully');
+      } else {
+        throw new Error('Failed to get authentication token');
+      }
+    } catch (error: any) {
+      console.error('Authentication error:', error);
+      throw new Error(`Authentication failed: ${error.message}`);
+    }
+  };
+
   // Connect wallet
   const connect = async () => {
     if (!checkMetaMask()) return;
 
+    // Prevent duplicate connection attempts
+    if (isConnectingRef.current || walletState.isConnected) {
+      console.log('Connection already in progress or already connected');
+      return;
+    }
+
+    isConnectingRef.current = true;
     setWalletState((prev) => ({ ...prev, isConnecting: true, error: null }));
 
     try {
       const browserProvider = new BrowserProvider(window.ethereum as any);
       const accounts = await browserProvider.send('eth_requestAccounts', []);
       const network = await browserProvider.getNetwork();
+
+      // Authenticate with backend to get JWT token
+      await authenticate(accounts[0], browserProvider);
 
       setProvider(browserProvider);
       setWalletState({
@@ -81,6 +121,8 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
         isConnecting: false,
         error: error.message || 'Failed to connect wallet',
       }));
+    } finally {
+      isConnectingRef.current = false;
     }
   };
 
@@ -95,6 +137,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     });
     setProvider(null);
     localStorage.removeItem('walletConnected');
+    localStorage.removeItem('authToken');
   };
 
   // Switch network
@@ -120,14 +163,31 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!window.ethereum) return;
 
-    const handleAccountsChanged = (accounts: string[]) => {
+    const handleAccountsChanged = async (accounts: string[]) => {
       if (accounts.length === 0) {
         disconnect();
       } else {
-        setWalletState((prev) => ({
-          ...prev,
-          address: accounts[0],
-        }));
+        // Re-authenticate with new account
+        if (provider) {
+          try {
+            await authenticate(accounts[0], provider);
+            setWalletState((prev) => ({
+              ...prev,
+              address: accounts[0],
+            }));
+          } catch (error: any) {
+            console.error('Re-authentication failed:', error);
+            setWalletState((prev) => ({
+              ...prev,
+              error: 'Failed to authenticate with new account',
+            }));
+          }
+        } else {
+          setWalletState((prev) => ({
+            ...prev,
+            address: accounts[0],
+          }));
+        }
       }
     };
 
@@ -152,14 +212,15 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       window.ethereum?.removeListener('chainChanged', handleChainChanged);
       window.ethereum?.removeListener('disconnect', handleDisconnect);
     };
-  }, []);
+  }, [provider]);
 
   // Auto-connect if previously connected
   useEffect(() => {
     const wasConnected = localStorage.getItem('walletConnected');
-    if (wasConnected === 'true' && checkMetaMask()) {
+    if (wasConnected === 'true' && checkMetaMask() && !walletState.isConnected && !isConnectingRef.current) {
       connect();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value: Web3ContextType = {

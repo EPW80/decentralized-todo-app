@@ -7,7 +7,7 @@ const {
   syncTodoFromBlockchain,
   restoreTodo,
 } = require("../controllers/todoController");
-const { validateAddress, verifyJWT } = require("../middleware/auth");
+const { validateAddress, verifyJWT, ensureOwnership } = require("../middleware/auth");
 const {
   validateSyncRequest,
   validateRestoreRequest,
@@ -41,31 +41,30 @@ const strictLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// Get todos by address
+// Get todos by address (protected - user can only access their own todos)
 // GET /api/todos/:address?includeCompleted=true&includeDeleted=false
-router.get("/:address", validateAddress, validateTodoQuery, getTodosByAddress);
+router.get("/:address", verifyJWT, ensureOwnership, validateAddress, validateTodoQuery, getTodosByAddress);
 
-// Get user statistics
+// Get user statistics (protected - user can only access their own stats)
 // GET /api/todos/:address/stats
-router.get("/:address/stats", validateAddress, getUserStats);
+router.get("/:address/stats", verifyJWT, ensureOwnership, validateAddress, getUserStats);
 
-// Get specific todo by MongoDB ID
+// Get specific todo by MongoDB ID (protected)
 // GET /api/todos/todo/:id
-// Note: No auth required as this is a simple ID lookup
-router.get("/todo/:id", getTodoById);
+router.get("/todo/:id", verifyJWT, getTodoById);
 
-// Verify todo against blockchain (expensive operation - strict rate limit)
+// Verify todo against blockchain (protected, expensive operation - strict rate limit)
 // GET /api/todos/verify/:id
-router.get("/verify/:id", strictLimiter, verifyTodo);
+router.get("/verify/:id", verifyJWT, strictLimiter, verifyTodo);
 
-// Manually sync a todo from blockchain (expensive operation - strict rate limit)
+// Manually sync a todo from blockchain (protected, expensive operation - strict rate limit)
 // POST /api/todos/sync
 // Body: { chainId, blockchainId }
-router.post("/sync", strictLimiter, optionalAuth, validateSyncRequest, syncTodoFromBlockchain);
+router.post("/sync", verifyJWT, strictLimiter, validateSyncRequest, syncTodoFromBlockchain);
 
-// Restore a deleted todo (expensive operation - strict rate limit)
+// Restore a deleted todo (protected, expensive operation - strict rate limit)
 // POST /api/todos/restore
 // Body: { id }
-router.post("/restore", strictLimiter, optionalAuth, validateRestoreRequest, restoreTodo);
+router.post("/restore", verifyJWT, strictLimiter, validateRestoreRequest, restoreTodo);
 
 module.exports = router;

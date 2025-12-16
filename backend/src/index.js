@@ -1,4 +1,9 @@
 require('dotenv').config();
+
+// Validate environment variables before starting
+const validateEnv = require('./config/validateEnv');
+validateEnv();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -7,9 +12,12 @@ const rateLimit = require('express-rate-limit');
 
 const connectDB = require('./config/database');
 const blockchainService = require('./services/blockchainService');
+const authRoutes = require('./routes/authRoutes');
 const todoRoutes = require('./routes/todoRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const errorHandler = require('./middleware/errorHandler');
+const logger = require('./utils/logger');
+const requestLogger = require('./middleware/requestLogger');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,18 +37,18 @@ function validateEnvironment() {
   const secret = process.env.JWT_SECRET || '';
 
   if (insecureSecrets.includes(secret.toLowerCase()) || secret.length < 32) {
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('⚠️  SECURITY ERROR: JWT_SECRET is not set or is insecure!');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.error('Please set a strong JWT_SECRET in your .env file');
-    console.error('Minimum 32 characters required');
-    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('⚠️  SECURITY ERROR: JWT_SECRET is not set or is insecure!');
+    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.error('Please set a strong JWT_SECRET in your .env file');
+    logger.error('Minimum 32 characters required');
+    logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     if (process.env.NODE_ENV === 'production') {
-      console.error('Exiting due to security risk in production...');
+      logger.error('Exiting due to security risk in production...');
       process.exit(1);
     } else {
-      console.warn('⚠️  Continuing in development mode with insecure JWT_SECRET');
+      logger.warn('⚠️  Continuing in development mode with insecure JWT_SECRET');
     }
   }
 
@@ -49,12 +57,12 @@ function validateEnvironment() {
   const missing = required.filter(key => !process.env[key]);
 
   if (missing.length > 0) {
-    console.error(`Missing required environment variables: ${missing.join(', ')}`);
-    console.error('Please check your .env file');
+    logger.error(`Missing required environment variables: ${missing.join(', ')}`);
+    logger.error('Please check your .env file');
     process.exit(1);
   }
 
-  console.log('✓ Environment validation passed');
+  logger.info('✓ Environment validation passed');
 }
 
 // Validate environment before initializing app
@@ -64,17 +72,24 @@ validateEnvironment();
 app.use(helmet()); // Security headers
 
 // Improved CORS with multiple origins support
-const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'];
+const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || ['http://localhost:3000'];
+
+// Validate CORS origins format
+corsOrigins.forEach(origin => {
+  if (!origin.match(/^https?:\/\/.+/)) {
+    logger.warn(`⚠️  Invalid CORS origin format: "${origin}". Should start with http:// or https://`);
+  }
+});
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, curl, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    if (corsOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`⚠️  Blocked CORS request from unauthorized origin: ${origin}`);
+      logger.warn(`⚠️  Blocked CORS request from unauthorized origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -82,9 +97,9 @@ app.use(cors({
   maxAge: 86400 // 24 hours
 }));
 
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev')); // Logging
-app.use(express.json()); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true }));
+app.use(requestLogger); // Request logging with correlation IDs
+app.use(express.json({ limit: '10kb' })); // Parse JSON bodies with size limit
+app.use(express.urlencoded({ extended: true, limit: '10kb' })); // Prevent large payload attacks
 
 // Rate limiting - Standard limiter for most endpoints
 const standardLimiter = rateLimit({
@@ -111,6 +126,7 @@ app.locals.strictLimiter = strictLimiter;
 
 // Routes
 app.use('/api/health', healthRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/todos', todoRoutes);
 
 // Error handling middleware (must be last)
@@ -122,20 +138,20 @@ const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
-    console.log('✓ MongoDB connected successfully');
+    logger.info('✓ MongoDB connected successfully');
 
     // Initialize blockchain service (connect to networks and start event listeners)
     await blockchainService.initialize();
-    console.log('✓ Blockchain service initialized');
+    logger.info('✓ Blockchain service initialized');
 
     // Start server and store reference
     server = app.listen(PORT, () => {
-      console.log(`✓ Server running on port ${PORT}`);
-      console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`✓ CORS enabled for: ${allowedOrigins.join(', ')}`);
+      logger.info(`✓ Server running on port ${PORT}`);
+      logger.info(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`✓ CORS enabled for: ${corsOrigins.join(', ')}`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server:', { error: error.message, stack: error.stack });
     process.exit(1);
   }
 };
@@ -145,16 +161,16 @@ let isShuttingDown = false;
 
 async function gracefulShutdown(signal) {
   if (isShuttingDown) {
-    console.log('⚠️  Forced shutdown');
+    logger.warn('⚠️  Forced shutdown');
     process.exit(1);
   }
 
   isShuttingDown = true;
-  console.log(`\n${signal} received, starting graceful shutdown...`);
+  logger.info(`\n${signal} received, starting graceful shutdown...`);
 
   // Set shutdown timeout (force exit after 30 seconds)
   const shutdownTimeout = setTimeout(() => {
-    console.error('❌ Shutdown timeout exceeded, forcing exit');
+    logger.error('❌ Shutdown timeout exceeded, forcing exit');
     process.exit(1);
   }, 30000);
 
@@ -162,25 +178,25 @@ async function gracefulShutdown(signal) {
     // Stop accepting new requests
     if (server) {
       server.close(() => {
-        console.log('✓ HTTP server closed');
+        logger.info('✓ HTTP server closed');
       });
     }
 
     // Cleanup blockchain listeners
-    console.log('Cleaning up blockchain service...');
+    logger.info('Cleaning up blockchain service...');
     await blockchainService.cleanup();
 
     // Close MongoDB connection
-    console.log('Closing MongoDB connection...');
+    logger.info('Closing MongoDB connection...');
     const mongoose = require('mongoose');
     await mongoose.connection.close(false);
-    console.log('✓ MongoDB connection closed');
+    logger.info('✓ MongoDB connection closed');
 
     clearTimeout(shutdownTimeout);
-    console.log('✓ Graceful shutdown completed');
+    logger.info('✓ Graceful shutdown completed');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error during shutdown:', error);
+    logger.error('❌ Error during shutdown:', { error: error.message, stack: error.stack });
     clearTimeout(shutdownTimeout);
     process.exit(1);
   }

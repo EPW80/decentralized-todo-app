@@ -1,5 +1,18 @@
+const logger = require('../utils/logger');
+
 const errorHandler = (err, req, res, next) => {
-  console.error("Error:", err);
+  // Log full error internally (for debugging)
+  if (process.env.NODE_ENV === 'development') {
+    logger.error("Error:", { error: err.message, stack: err.stack });
+  } else {
+    // In production, log sanitized version
+    logger.error("Error:", {
+      name: err.name,
+      message: err.message,
+      code: err.code,
+      statusCode: err.statusCode
+    });
+  }
 
   // Mongoose validation error
   if (err.name === "ValidationError") {
@@ -36,10 +49,14 @@ const errorHandler = (err, req, res, next) => {
 
   // Blockchain/ethers errors
   if (err.code && err.code.startsWith("CALL_EXCEPTION")) {
+    // Log full error internally for debugging
+    logger.error('Blockchain error details:', { error: err.message, stack: err.stack });
+
     return res.status(400).json({
       success: false,
       error: "Blockchain transaction failed",
-      details: err.message,
+      // Only include details in development
+      ...(process.env.NODE_ENV === "development" && { details: err.message }),
     });
   }
 

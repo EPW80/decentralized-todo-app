@@ -16,6 +16,13 @@ const getTodosByAddress = async (req, res, next) => {
       includeDeleted === "true"
     );
 
+    const logger = require('../utils/logger');
+    logger.info(`Found ${todos.length} todos for ${address}`, {
+      includeCompleted: includeCompleted !== "false",
+      includeDeleted: includeDeleted === "true",
+      todos: todos.map(t => ({ id: t._id, description: t.description, chainId: t.chainId }))
+    });
+
     res.json({
       success: true,
       count: todos.length,

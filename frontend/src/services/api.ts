@@ -63,6 +63,21 @@ export const apiService = {
     return response.data;
   },
 
+  // Authentication
+  async getNonce(address: string) {
+    const response = await api.get(`/auth/nonce/${address}`);
+    return response.data;
+  },
+
+  async login(address: string, signature: string, message: string) {
+    const response = await api.post('/auth/login', {
+      address,
+      signature,
+      message,
+    });
+    return response.data;
+  },
+
   // Get todos by address
   async getTodosByAddress(
     address: string,

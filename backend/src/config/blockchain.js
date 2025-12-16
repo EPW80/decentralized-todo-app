@@ -1,32 +1,38 @@
 const path = require("path");
 const fs = require("fs");
+const logger = require("../utils/logger");
 
-// Network configurations
+// Network configurations with backup RPC URLs for failover
 const networks = {
   localhost: {
     name: "localhost",
     chainId: 31337,
     rpcUrl: process.env.LOCALHOST_RPC || "http://127.0.0.1:8545",
+    rpcBackup: process.env.LOCALHOST_RPC_BACKUP || "",
   },
   sepolia: {
     name: "sepolia",
     chainId: 11155111,
     rpcUrl: process.env.ETHEREUM_SEPOLIA_RPC || "",
+    rpcBackup: process.env.ETHEREUM_SEPOLIA_RPC_BACKUP || "",
   },
   polygonMumbai: {
     name: "polygonMumbai",
     chainId: 80001,
     rpcUrl: process.env.POLYGON_MUMBAI_RPC || "",
+    rpcBackup: process.env.POLYGON_MUMBAI_RPC_BACKUP || "",
   },
   arbitrumGoerli: {
     name: "arbitrumGoerli",
     chainId: 421613,
     rpcUrl: process.env.ARBITRUM_GOERLI_RPC || "",
+    rpcBackup: process.env.ARBITRUM_GOERLI_RPC_BACKUP || "",
   },
   optimismSepolia: {
     name: "optimismSepolia",
     chainId: 11155420,
     rpcUrl: process.env.OPTIMISM_SEPOLIA_RPC || "",
+    rpcBackup: process.env.OPTIMISM_SEPOLIA_RPC_BACKUP || "",
   },
 };
 
@@ -50,14 +56,14 @@ const loadContractAddresses = () => {
         // TodoListV2 uses proxy pattern, fallback to old format for backward compatibility
         addresses[network.chainId] = deploymentData.proxy || deploymentData.todoListAddress;
       } else {
-        console.warn(
+        logger.warn(
           `No deployment file found for ${network.name} (chainId: ${network.chainId})`
         );
       }
     } catch (error) {
-      console.error(
+      logger.error(
         `Error loading deployment for ${network.name}:`,
-        error.message
+        { error: error.message, stack: error.stack }
       );
     }
   });
@@ -75,7 +81,7 @@ const loadContractABI = () => {
     const artifact = JSON.parse(fs.readFileSync(abiPath, "utf8"));
     return artifact.abi;
   } catch (error) {
-    console.error("Error loading contract ABI:", error.message);
+    logger.error("Error loading contract ABI:", { error: error.message, stack: error.stack });
     throw new Error("Failed to load contract ABI");
   }
 };

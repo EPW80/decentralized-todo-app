@@ -20,14 +20,17 @@ function handleValidationErrors(req, res, next) {
  */
 const validateSyncRequest = [
   body('chainId')
-    .isInt({ min: 1 })
+    .isInt({ min: 1, max: 999999999 })
     .withMessage('chainId must be a valid positive integer')
     .toInt(),
   body('blockchainId')
     .isString()
     .trim()
     .notEmpty()
-    .withMessage('blockchainId is required and must be a string'),
+    .isLength({ min: 1, max: 100 })
+    .withMessage('blockchainId must be a string between 1 and 100 characters')
+    .matches(/^[0-9]+$/)
+    .withMessage('blockchainId must contain only numbers'),
   handleValidationErrors
 ];
 

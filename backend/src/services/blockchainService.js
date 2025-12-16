@@ -1,4 +1,5 @@
 const { ethers } = require('ethers');
+const logger = require('../utils/logger');
 const Todo = require('../models/Todo');
 const { networks, contractAddresses, contractABI, defaultNetwork } = require('../config/blockchain');
 
@@ -25,13 +26,13 @@ class BlockchainService {
       // Initialize providers and contracts for each network
       for (const [networkKey, network] of Object.entries(networks)) {
         if (!network.rpcUrl) {
-          console.warn(`Skipping ${network.name}: No RPC URL provided`);
+          logger.warn(`Skipping ${network.name}: No RPC URL provided`);
           continue;
         }
 
         const contractAddress = contractAddresses[network.chainId];
         if (!contractAddress) {
-          console.warn(`Skipping ${network.name}: No contract deployed`);
+          logger.warn(`Skipping ${network.name}: No contract deployed`);
           continue;
         }
 
@@ -41,8 +42,8 @@ class BlockchainService {
           const defaultConfirmations = this.getDefaultConfirmations(network.chainId);
           this.confirmations[network.chainId] = parseInt(process.env[envKey]) || defaultConfirmations;
 
-          // Create provider
-          const provider = new ethers.JsonRpcProvider(network.rpcUrl);
+          // Create resilient provider with failover support
+          const provider = this.createResilientProvider(network);
           this.providers[network.chainId] = provider;
 
           // Create contract instance
@@ -52,17 +53,48 @@ class BlockchainService {
           // Start event listeners
           this.startEventListeners(network.chainId);
 
-          console.log(`✓ Connected to ${network.name} (chainId: ${network.chainId}, confirmations: ${this.confirmations[network.chainId]})`);
+          // Recover any missed events during downtime
+          await this.recoverMissedEvents(network.chainId);
+
+          logger.info(`✓ Connected to ${network.name} (chainId: ${network.chainId}, confirmations: ${this.confirmations[network.chainId]})`);
         } catch (error) {
-          console.error(`Error initializing ${network.name}:`, error.message);
+          logger.error(`Error initializing ${network.name}:`, { error: error.message, stack: error.stack });
         }
       }
 
       this.initialized = true;
     } catch (error) {
-      console.error('Error initializing blockchain service:', error);
+      logger.error('Error initializing blockchain service:', { error: error.message, stack: error.stack });
       throw error;
     }
+  }
+
+  /**
+   * Create resilient provider with automatic failover to backup RPC
+   * Uses FallbackProvider if backup URL is available, otherwise single provider
+   */
+  createResilientProvider(network) {
+    const rpcs = [
+      network.rpcUrl,
+      network.rpcBackup
+    ].filter(Boolean); // Remove empty strings
+
+    // If only one RPC URL, use simple provider
+    if (rpcs.length === 1) {
+      return new ethers.JsonRpcProvider(rpcs[0]);
+    }
+
+    // Use FallbackProvider for automatic failover
+    logger.info(`Setting up failover for ${network.name} with ${rpcs.length} RPC endpoints`);
+
+    const providers = rpcs.map((rpc, index) => ({
+      provider: new ethers.JsonRpcProvider(rpc),
+      priority: index + 1,      // Lower priority = preferred (1 is highest)
+      stallTimeout: 2000,        // 2 seconds before trying next provider
+      weight: 1                  // Equal weight for load balancing
+    }));
+
+    return new ethers.FallbackProvider(providers);
   }
 
   /**
@@ -84,10 +116,121 @@ class BlockchainService {
     return confirmationDefaults[chainId] || 12; // Default to 12 if unknown
   }
 
+  /**
+   * Recover missed events during backend downtime
+   * Queries blockchain for events since last successful sync
+   */
+  async recoverMissedEvents(chainId) {
+    try {
+      const contract = this.contracts[chainId];
+      const provider = this.providers[chainId];
+
+      if (!contract || !provider) {
+        logger.warn(`Cannot recover events for chain ${chainId}: contract or provider not available`);
+        return;
+      }
+
+      // Find the last synced todo for this chain
+      const lastSynced = await Todo.findOne({ chainId })
+        .sort({ lastSyncedAt: -1 })
+        .select('lastSyncedAt')
+        .lean();
+
+      // Get current block number
+      const currentBlock = await provider.getBlockNumber();
+
+      // Calculate recovery window
+      const recoveryDays = process.env.EVENT_RECOVERY_DAYS !== undefined ? parseInt(process.env.EVENT_RECOVERY_DAYS) : 7;
+      const blocksPerDay = this.getBlocksPerDay(chainId);
+      const defaultStartBlock = Math.max(0, currentBlock - (blocksPerDay * recoveryDays));
+
+      let fromBlock = defaultStartBlock;
+
+      // If we have a last sync timestamp, calculate approximate block
+      if (lastSynced?.lastSyncedAt) {
+        const secondsSinceLastSync = (Date.now() - new Date(lastSynced.lastSyncedAt).getTime()) / 1000;
+        const blockTime = this.getAverageBlockTime(chainId);
+        const blocksSince = Math.floor(secondsSinceLastSync / blockTime);
+        fromBlock = Math.max(defaultStartBlock, currentBlock - blocksSince - 100); // Add 100 block buffer
+      }
+
+      // Don't sync if we're already up to date (within 10 blocks)
+      if (currentBlock - fromBlock < 10) {
+        logger.info(`✓ Chain ${chainId} is up to date, no event recovery needed`);
+        return;
+      }
+
+      logger.info(`🔄 Recovering events for chain ${chainId} from block ${fromBlock} to ${currentBlock}...`);
+
+      // Use existing resync functionality
+      await this.resyncFromBlock(chainId, fromBlock);
+
+      logger.info(`✓ Event recovery completed for chain ${chainId}`);
+    } catch (error) {
+      logger.error(`Error recovering missed events for chain ${chainId}:`, { error: error.message, stack: error.stack });
+      // Don't throw - continue initialization even if recovery fails
+    }
+  }
+
+  /**
+   * Get average blocks per day for a chain
+   */
+  getBlocksPerDay(chainId) {
+    const blocksPerDay = {
+      1: 7200,       // Ethereum Mainnet - 12s blocks
+      11155111: 7200, // Sepolia - 12s blocks
+      137: 43200,    // Polygon Mainnet - 2s blocks
+      80001: 43200,  // Mumbai - 2s blocks
+      42161: 240000, // Arbitrum One - 0.36s blocks
+      421613: 240000, // Arbitrum Goerli - 0.36s blocks
+      10: 43200,     // Optimism - 2s blocks
+      11155420: 43200, // Optimism Sepolia - 2s blocks
+      31337: 7200    // Localhost/Hardhat - assume 12s
+    };
+
+    return blocksPerDay[chainId] || 7200; // Default to Ethereum timing
+  }
+
+  /**
+   * Get average block time in seconds for a chain
+   */
+  getAverageBlockTime(chainId) {
+    const blockTimes = {
+      1: 12,         // Ethereum Mainnet
+      11155111: 12,  // Sepolia
+      137: 2,        // Polygon Mainnet
+      80001: 2,      // Mumbai
+      42161: 0.36,   // Arbitrum One
+      421613: 0.36,  // Arbitrum Goerli
+      10: 2,         // Optimism
+      11155420: 2,   // Optimism Sepolia
+      31337: 12      // Localhost/Hardhat
+    };
+
+    return blockTimes[chainId] || 12; // Default to 12 seconds
+  }
+
   async startEventListeners(chainId) {
     const contract = this.contracts[chainId];
     const provider = this.providers[chainId];
     if (!contract || !provider) return;
+
+    // Remove existing listeners to prevent memory leaks
+    if (this.eventHandlers[chainId]) {
+      const handlers = this.eventHandlers[chainId];
+
+      // Remove contract event handlers
+      if (handlers.taskCreated) contract.off('TaskCreated', handlers.taskCreated);
+      if (handlers.taskCompleted) contract.off('TaskCompleted', handlers.taskCompleted);
+      if (handlers.taskDeleted) contract.off('TaskDeleted', handlers.taskDeleted);
+      if (handlers.taskRestored) contract.off('TaskRestored', handlers.taskRestored);
+
+      // Remove provider handlers
+      if (handlers.providerError) provider.off('error', handlers.providerError);
+      if (handlers.blockUpdate) provider.off('block', handlers.blockUpdate);
+
+      logger.info(`🗑️  Removed old event listeners for chain ${chainId}`);
+    }
 
     // Mark event listeners as active
     this.eventListenersActive[chainId] = true;
@@ -96,91 +239,108 @@ class BlockchainService {
     try {
       this.lastProcessedBlock[chainId] = await provider.getBlockNumber();
     } catch (error) {
-      console.error(`Error getting initial block number for chain ${chainId}:`, error);
+      logger.error(`Error getting initial block number for chain ${chainId}:`, { error: error.message, stack: error.stack });
       this.lastProcessedBlock[chainId] = 0;
     }
 
-    // Add provider error handling and reconnection logic
-    provider.on('error', async (error) => {
-      console.error(`Provider error for chain ${chainId}:`, error.message);
-      this.eventListenersActive[chainId] = false;
-      await this.reconnectProvider(chainId);
-    });
-
-    // Add WebSocket disconnect handling
-    if (provider.websocket) {
-      provider.websocket.on('close', async (code, reason) => {
-        console.warn(`WebSocket closed for chain ${chainId}: ${code} - ${reason}`);
+    // Create named handler functions (prevents memory leaks)
+    const handlers = {
+      // Provider error handler
+      providerError: async (error) => {
+        logger.error(`Provider error for chain ${chainId}:`, { error: error.message, stack: error.stack });
         this.eventListenersActive[chainId] = false;
         await this.reconnectProvider(chainId);
-      });
+      },
+
+      // Block update handler
+      blockUpdate: async (blockNumber) => {
+        await this.handleBlockUpdate(chainId, blockNumber);
+      },
+
+      // TaskCreated event handler
+      taskCreated: async (taskId, owner, description, timestamp, event) => {
+        try {
+          logger.info(`[${chainId}] TaskCreated event:`, {
+            taskId: taskId.toString(),
+            owner,
+            description,
+            blockNumber: event.log.blockNumber,
+          });
+
+          await this.syncTaskCreated(chainId, taskId, owner, description, timestamp, event.log.transactionHash);
+        } catch (error) {
+          logger.error(`Error handling TaskCreated event:`, { error: error.message, stack: error.stack });
+        }
+      },
+
+      // TaskCompleted event handler
+      taskCompleted: async (taskId, owner, timestamp, event) => {
+        try {
+          logger.info(`[${chainId}] TaskCompleted event:`, {
+            taskId: taskId.toString(),
+            timestamp,
+            blockNumber: event.log.blockNumber,
+          });
+
+          await this.syncTaskCompleted(chainId, taskId, timestamp);
+        } catch (error) {
+          logger.error(`Error handling TaskCompleted event:`, { error: error.message, stack: error.stack });
+        }
+      },
+
+      // TaskDeleted event handler
+      taskDeleted: async (taskId, owner, timestamp, event) => {
+        try {
+          logger.info(`[${chainId}] TaskDeleted event:`, {
+            taskId: taskId.toString(),
+            blockNumber: event.log.blockNumber,
+          });
+
+          await this.syncTaskDeleted(chainId, taskId);
+        } catch (error) {
+          logger.error(`Error handling TaskDeleted event:`, { error: error.message, stack: error.stack });
+        }
+      },
+
+      // TaskRestored event handler
+      taskRestored: async (taskId, owner, timestamp, event) => {
+        try {
+          logger.info(`[${chainId}] TaskRestored event:`, {
+            taskId: taskId.toString(),
+            blockNumber: event.log.blockNumber,
+          });
+
+          await this.syncTaskRestored(chainId, taskId);
+        } catch (error) {
+          logger.error(`Error handling TaskRestored event:`, { error: error.message, stack: error.stack });
+        }
+      }
+    };
+
+    // Store handler references for cleanup
+    this.eventHandlers[chainId] = handlers;
+
+    // Attach provider handlers
+    provider.on('error', handlers.providerError);
+    provider.on('block', handlers.blockUpdate);
+
+    // Add WebSocket disconnect handling (if applicable)
+    if (provider.websocket) {
+      handlers.websocketClose = async (code, reason) => {
+        logger.warn(`WebSocket closed for chain ${chainId}: ${code} - ${reason}`);
+        this.eventListenersActive[chainId] = false;
+        await this.reconnectProvider(chainId);
+      };
+      provider.websocket.on('close', handlers.websocketClose);
     }
 
-    // Monitor blocks for reorganization detection
-    provider.on('block', async (blockNumber) => {
-      await this.handleBlockUpdate(chainId, blockNumber);
-    });
+    // Attach contract event handlers
+    contract.on('TaskCreated', handlers.taskCreated);
+    contract.on('TaskCompleted', handlers.taskCompleted);
+    contract.on('TaskDeleted', handlers.taskDeleted);
+    contract.on('TaskRestored', handlers.taskRestored);
 
-    // Listen for TaskCreated events
-    contract.on('TaskCreated', async (taskId, owner, description, timestamp, event) => {
-      try {
-        console.log(`[${chainId}] TaskCreated event:`, {
-          taskId: taskId.toString(),
-          owner,
-          description,
-          blockNumber: event.log.blockNumber,
-        });
-
-        await this.syncTaskCreated(chainId, taskId, owner, description, timestamp, event.log.transactionHash);
-      } catch (error) {
-        console.error(`Error handling TaskCreated event:`, error);
-      }
-    });
-
-    // Listen for TaskCompleted events
-    contract.on('TaskCompleted', async (taskId, owner, timestamp, event) => {
-      try {
-        console.log(`[${chainId}] TaskCompleted event:`, {
-          taskId: taskId.toString(),
-          timestamp,
-          blockNumber: event.log.blockNumber,
-        });
-
-        await this.syncTaskCompleted(chainId, taskId, timestamp);
-      } catch (error) {
-        console.error(`Error handling TaskCompleted event:`, error);
-      }
-    });
-
-    // Listen for TaskDeleted events
-    contract.on('TaskDeleted', async (taskId, owner, timestamp, event) => {
-      try {
-        console.log(`[${chainId}] TaskDeleted event:`, {
-          taskId: taskId.toString(),
-          blockNumber: event.log.blockNumber,
-        });
-
-        await this.syncTaskDeleted(chainId, taskId);
-      } catch (error) {
-        console.error(`Error handling TaskDeleted event:`, error);
-      }
-    });
-
-    // Listen for TaskRestored events
-    contract.on('TaskRestored', async (taskId, owner, timestamp, event) => {
-      try {
-        console.log(`[${chainId}] TaskRestored event:`, {
-          taskId: taskId.toString(),
-          blockNumber: event.log.blockNumber,
-        });
-
-        await this.syncTaskRestored(chainId, taskId);
-      } catch (error) {
-        console.error(`Error handling TaskRestored event:`, error);
-      }
-    });
-
-    console.log(`✓ Event listeners started for chainId: ${chainId}`);
+    logger.info(`✓ Event listeners started for chainId: ${chainId}`);
   }
 
   async syncTaskCreated(chainId, taskId, owner, description, timestamp, transactionHash) {
@@ -190,7 +350,7 @@ class BlockchainService {
       // Check if task already exists
       const existing = await Todo.findByBlockchainId(chainId, blockchainId);
       if (existing) {
-        console.log(`Task ${blockchainId} already synced on chain ${chainId}`);
+        logger.info(`Task ${blockchainId} already synced on chain ${chainId}`);
         return;
       }
 
@@ -207,9 +367,9 @@ class BlockchainService {
       });
 
       await todo.save();
-      console.log(`✓ Synced TaskCreated: ${blockchainId} on chain ${chainId}`);
+      logger.info(`✓ Synced TaskCreated: ${blockchainId} on chain ${chainId}`);
     } catch (error) {
-      console.error('Error syncing TaskCreated:', error);
+      logger.error('Error syncing TaskCreated:', { error: error.message, stack: error.stack });
     }
   }
 
@@ -219,14 +379,14 @@ class BlockchainService {
       const todo = await Todo.findByBlockchainId(chainId, blockchainId);
 
       if (!todo) {
-        console.error(`Todo ${blockchainId} not found for completion on chain ${chainId}`);
+        logger.error(`Todo ${blockchainId} not found for completion on chain ${chainId}`);
         return;
       }
 
       await todo.markAsCompleted(new Date(Number(timestamp) * 1000));
-      console.log(`✓ Synced TaskCompleted: ${blockchainId} on chain ${chainId}`);
+      logger.info(`✓ Synced TaskCompleted: ${blockchainId} on chain ${chainId}`);
     } catch (error) {
-      console.error('Error syncing TaskCompleted:', error);
+      logger.error('Error syncing TaskCompleted:', { error: error.message, stack: error.stack });
     }
   }
 
@@ -236,14 +396,14 @@ class BlockchainService {
       const todo = await Todo.findByBlockchainId(chainId, blockchainId);
 
       if (!todo) {
-        console.error(`Todo ${blockchainId} not found for deletion on chain ${chainId}`);
+        logger.error(`Todo ${blockchainId} not found for deletion on chain ${chainId}`);
         return;
       }
 
       await todo.markAsDeleted();
-      console.log(`✓ Synced TaskDeleted: ${blockchainId} on chain ${chainId}`);
+      logger.info(`✓ Synced TaskDeleted: ${blockchainId} on chain ${chainId}`);
     } catch (error) {
-      console.error('Error syncing TaskDeleted:', error);
+      logger.error('Error syncing TaskDeleted:', { error: error.message, stack: error.stack });
     }
   }
 
@@ -253,14 +413,14 @@ class BlockchainService {
       const todo = await Todo.findByBlockchainId(chainId, blockchainId);
 
       if (!todo) {
-        console.error(`Todo ${blockchainId} not found for restoration on chain ${chainId}`);
+        logger.error(`Todo ${blockchainId} not found for restoration on chain ${chainId}`);
         return;
       }
 
       await todo.markAsRestored();
-      console.log(`✓ Synced TaskRestored: ${blockchainId} on chain ${chainId}`);
+      logger.info(`✓ Synced TaskRestored: ${blockchainId} on chain ${chainId}`);
     } catch (error) {
-      console.error('Error syncing TaskRestored:', error);
+      logger.error('Error syncing TaskRestored:', { error: error.message, stack: error.stack });
     }
   }
 
@@ -309,14 +469,14 @@ class BlockchainService {
     }
 
     if (this.reconnectAttempts[chainId] >= this.maxReconnectAttempts) {
-      console.error(`Max reconnection attempts reached for chain ${chainId}`);
+      logger.error(`Max reconnection attempts reached for chain ${chainId}`);
       return;
     }
 
     this.reconnectAttempts[chainId]++;
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts[chainId] - 1);
 
-    console.log(
+    logger.info(
       `Attempting to reconnect to chain ${chainId} (attempt ${this.reconnectAttempts[chainId]}/${this.maxReconnectAttempts}) in ${delay}ms...`
     );
 
@@ -325,7 +485,7 @@ class BlockchainService {
         // Find the network configuration
         const network = Object.values(networks).find((n) => n.chainId === chainId);
         if (!network) {
-          console.error(`Network configuration not found for chain ${chainId}`);
+          logger.error(`Network configuration not found for chain ${chainId}`);
           return;
         }
 
@@ -335,8 +495,8 @@ class BlockchainService {
           oldContract.removeAllListeners();
         }
 
-        // Create new provider
-        const provider = new ethers.JsonRpcProvider(network.rpcUrl);
+        // Create new resilient provider with failover support
+        const provider = this.createResilientProvider(network);
         this.providers[chainId] = provider;
 
         // Recreate contract instance
@@ -350,9 +510,9 @@ class BlockchainService {
         // Reset reconnection attempts on success
         this.reconnectAttempts[chainId] = 0;
 
-        console.log(`✓ Successfully reconnected to chain ${chainId}`);
+        logger.info(`✓ Successfully reconnected to chain ${chainId}`);
       } catch (error) {
-        console.error(`Failed to reconnect to chain ${chainId}:`, error.message);
+        logger.error(`Failed to reconnect to chain ${chainId}:`, { error: error.message, stack: error.stack });
         await this.reconnectProvider(chainId);
       }
     }, delay);
@@ -367,7 +527,7 @@ class BlockchainService {
 
       // Check for block reorganization
       if (lastBlock && blockNumber <= lastBlock) {
-        console.warn(
+        logger.warn(
           `Potential block reorganization detected on chain ${chainId}: current ${blockNumber}, last ${lastBlock}`
         );
         await this.handleReorg(chainId, blockNumber);
@@ -376,7 +536,7 @@ class BlockchainService {
       // Update last processed block
       this.lastProcessedBlock[chainId] = blockNumber;
     } catch (error) {
-      console.error(`Error handling block update for chain ${chainId}:`, error);
+      logger.error(`Error handling block update for chain ${chainId}:`, { error: error.message, stack: error.stack });
     }
   }
 
@@ -385,7 +545,7 @@ class BlockchainService {
    */
   async handleReorg(chainId, blockNumber) {
     try {
-      console.log(`Handling reorganization for chain ${chainId} at block ${blockNumber}`);
+      logger.info(`Handling reorganization for chain ${chainId} at block ${blockNumber}`);
 
       // Calculate safe block (block with enough confirmations) - now chain-specific
       const confirmations = this.confirmations[chainId] || 12;
@@ -400,11 +560,11 @@ class BlockchainService {
 
       // If our last processed block is beyond the safe block, we need to resync
       if (lastProcessed > safeBlock) {
-        console.log(`Resyncing from block ${safeBlock} for chain ${chainId} (${confirmations} confirmations)`);
+        logger.info(`Resyncing from block ${safeBlock} for chain ${chainId} (${confirmations} confirmations)`);
         await this.resyncFromBlock(chainId, safeBlock);
       }
     } catch (error) {
-      console.error(`Error handling reorganization for chain ${chainId}:`, error);
+      logger.error(`Error handling reorganization for chain ${chainId}:`, { error: error.message, stack: error.stack });
     }
   }
 
@@ -415,11 +575,11 @@ class BlockchainService {
     try {
       const contract = this.contracts[chainId];
       if (!contract) {
-        console.error(`Contract not found for chain ${chainId}`);
+        logger.error(`Contract not found for chain ${chainId}`);
         return;
       }
 
-      console.log(`Resyncing events from block ${fromBlock} on chain ${chainId}`);
+      logger.info(`Resyncing events from block ${fromBlock} on chain ${chainId}`);
 
       // Get current block
       const provider = this.providers[chainId];
@@ -440,7 +600,7 @@ class BlockchainService {
       // Get TaskRestored events
       const restoredEvents = await contract.queryFilter(filter.TaskRestored(), fromBlock, currentBlock);
 
-      console.log(
+      logger.info(
         `Found ${createdEvents.length} created, ${completedEvents.length} completed, ${deletedEvents.length} deleted, ${restoredEvents.length} restored events to resync`
       );
 
@@ -465,14 +625,14 @@ class BlockchainService {
         await this.syncTaskRestored(chainId, taskId);
       }
 
-      console.log(`✓ Resync completed for chain ${chainId}`);
+      logger.info(`✓ Resync completed for chain ${chainId}`);
     } catch (error) {
-      console.error(`Error resyncing from block ${fromBlock} on chain ${chainId}:`, error);
+      logger.error(`Error resyncing from block ${fromBlock} on chain ${chainId}:`, { error: error.message, stack: error.stack });
     }
   }
 
   async cleanup() {
-    console.log('Cleaning up blockchain service...');
+    logger.info('Cleaning up blockchain service...');
     // Mark all event listeners as inactive
     for (const chainId of Object.keys(this.eventListenersActive)) {
       this.eventListenersActive[chainId] = false;
