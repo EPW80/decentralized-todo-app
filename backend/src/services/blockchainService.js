@@ -346,6 +346,7 @@ class BlockchainService {
   async syncTaskCreated(chainId, taskId, owner, description, timestamp, transactionHash) {
     try {
       const blockchainId = taskId.toString();
+      logger.info(`[DEBUG] Attempting to sync TaskCreated: ${blockchainId} on chain ${chainId}`);
 
       // Check if task already exists
       const existing = await Todo.findByBlockchainId(chainId, blockchainId);
@@ -353,6 +354,7 @@ class BlockchainService {
         logger.info(`Task ${blockchainId} already synced on chain ${chainId}`);
         return;
       }
+      logger.info(`[DEBUG] No existing todo found, creating new one`);
 
       // Create new todo in MongoDB
       const todo = new Todo({
@@ -366,7 +368,20 @@ class BlockchainService {
         syncStatus: 'synced',
       });
 
-      await todo.save();
+      logger.info(`[DEBUG] Todo object created, calling save()...`);
+      logger.info(`[DEBUG] Todo data:`, { blockchainId, chainId, transactionHash, owner: owner.toLowerCase(), description });
+
+      const savedTodo = await todo.save();
+      logger.info(`[DEBUG] Todo saved successfully! ID: ${savedTodo._id}`);
+
+      // Verify it was actually saved
+      const verification = await Todo.findByBlockchainId(chainId, blockchainId);
+      if (verification) {
+        logger.info(`[DEBUG] ✓ Verification successful - todo found in DB after save`);
+      } else {
+        logger.error(`[DEBUG] ❌ Verification FAILED - todo NOT found in DB after save!`);
+      }
+
       logger.info(`✓ Synced TaskCreated: ${blockchainId} on chain ${chainId}`);
     } catch (error) {
       logger.error('Error syncing TaskCreated:', { error: error.message, stack: error.stack });

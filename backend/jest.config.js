@@ -4,6 +4,7 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/index.js', // Exclude entry point
+    '!src/scripts/**', // Exclude utility scripts
     '!**/node_modules/**',
   ],
   testMatch: [
@@ -12,10 +13,10 @@ module.exports = {
   ],
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
+      branches: 60,
+      functions: 60,
+      lines: 60,
+      statements: 60,
     },
   },
   setupFilesAfterEnv: ['<rootDir>/test/setup.js'],

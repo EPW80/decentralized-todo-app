@@ -90,3 +90,17 @@ credentials.json
 
 # Claude Code planning files
 claude.md
+
+# Test scripts (created during development/testing)
+test-*.js
+check-*.js
+create-*.js
+verify-*.js
+final-test.js
+
+# Local blockchain deployments (keep testnet deployments)
+contracts/deployments/deployment-31337.json
+**/deployment-31337.json
+
+# Hardhat cache for local network
+.openzeppelin/unknown-*.json

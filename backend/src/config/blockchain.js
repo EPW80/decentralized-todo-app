@@ -53,8 +53,12 @@ const loadContractAddresses = () => {
         const deploymentData = JSON.parse(
           fs.readFileSync(deploymentFile, "utf8")
         );
-        // TodoListV2 uses proxy pattern, fallback to old format for backward compatibility
-        addresses[network.chainId] = deploymentData.proxy || deploymentData.todoListAddress;
+        // Support multiple deployment formats
+        addresses[network.chainId] =
+          deploymentData.proxy ||
+          deploymentData.todoListAddress ||
+          deploymentData.contracts?.TodoListV2?.address ||
+          deploymentData.contracts?.TodoList?.address;
       } else {
         logger.warn(
           `No deployment file found for ${network.name} (chainId: ${network.chainId})`

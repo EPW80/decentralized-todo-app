@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const { upgrades } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
 
@@ -17,15 +18,18 @@ async function main() {
   const balance = await hre.ethers.provider.getBalance(deployer.address);
   console.log(`Account balance: ${hre.ethers.formatEther(balance)} ETH`);
 
-  // Deploy TodoList contract
-  console.log("\nDeploying TodoList contract...");
-  const TodoList = await hre.ethers.getContractFactory("TodoList");
-  const todoList = await TodoList.deploy();
+  // Deploy TodoListV2 contract with proxy
+  console.log("\nDeploying TodoListV2 contract with UUPS proxy...");
+  const TodoListV2 = await hre.ethers.getContractFactory("TodoListV2");
+  const todoList = await upgrades.deployProxy(TodoListV2, [deployer.address], {
+    kind: "uups",
+    initializer: "initialize",
+  });
 
   await todoList.waitForDeployment();
   const todoListAddress = await todoList.getAddress();
 
-  console.log(`TodoList contract deployed to: ${todoListAddress}`);
+  console.log(`TodoListV2 proxy deployed to: ${todoListAddress}`);
 
   // Save deployment information
   const deploymentInfo = {
@@ -33,7 +37,7 @@ async function main() {
     chainId: network.chainId.toString(),
     deployer: deployer.address,
     contracts: {
-      TodoList: {
+      TodoListV2: {
         address: todoListAddress,
         blockNumber: todoList.deploymentTransaction()?.blockNumber || "N/A",
         timestamp: new Date().toISOString(),
@@ -61,7 +65,7 @@ async function main() {
   console.log(`Network: ${network.name}`);
   console.log(`Chain ID: ${network.chainId}`);
   console.log(`Deployer: ${deployer.address}`);
-  console.log(`TodoList Contract: ${todoListAddress}`);
+  console.log(`TodoListV2 Contract: ${todoListAddress}`);
   console.log("================================\n");
 
   // If not on localhost/hardhat, remind about verification
