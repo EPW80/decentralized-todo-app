@@ -71,7 +71,6 @@ const config: HardhatUserConfig = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
-    root: "../",
   },
   mocha: {
     timeout: 40000,

@@ -116,10 +116,22 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       localStorage.setItem('walletConnected', 'true');
     } catch (error: any) {
       console.error('Error connecting wallet:', error);
+
+      // Handle MetaMask-specific errors gracefully
+      let errorMessage = error.message || 'Failed to connect wallet';
+
+      // If MetaMask is already processing a request, don't show error to user
+      if (error.code === 'UNKNOWN_ERROR' && error.error?.code === -32002) {
+        console.log('MetaMask is already processing a connection request, ignoring duplicate call');
+        errorMessage = ''; // Don't show error for duplicate requests
+      } else if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+        errorMessage = 'Connection request was rejected';
+      }
+
       setWalletState((prev) => ({
         ...prev,
         isConnecting: false,
-        error: error.message || 'Failed to connect wallet',
+        error: errorMessage || null,
       }));
     } finally {
       isConnectingRef.current = false;
@@ -218,7 +230,14 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   useEffect(() => {
     const wasConnected = localStorage.getItem('walletConnected');
     if (wasConnected === 'true' && checkMetaMask() && !walletState.isConnected && !isConnectingRef.current) {
-      connect();
+      // Add a small delay to let the UI stabilize and avoid race conditions
+      const timeoutId = setTimeout(() => {
+        if (!isConnectingRef.current && !walletState.isConnected) {
+          connect();
+        }
+      }, 300);
+
+      return () => clearTimeout(timeoutId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
