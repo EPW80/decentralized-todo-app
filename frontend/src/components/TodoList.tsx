@@ -49,8 +49,16 @@ const TodoList: React.FC = () => {
 
     try {
       const response = await apiService.getTodosByAddress(address, true, false);
+      console.log('Todos API Response:', response);
       if (response.success && response.data) {
+        console.log(`Setting ${response.data.length} todos`);
+        console.log('Todo completed statuses:', response.data.map((t: any) => ({
+          desc: t.description?.substring(0, 30),
+          completed: t.completed
+        })));
         setTodos(response.data);
+      } else {
+        console.error('Todos fetch failed:', response);
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -70,8 +78,12 @@ const TodoList: React.FC = () => {
 
     try {
       const response = await apiService.getUserStats(address);
+      console.log('Stats API Response:', response);
       if (response.success && response.data) {
+        console.log('Setting stats to:', response.data);
         setStats(response.data);
+      } else {
+        console.error('Stats fetch failed:', response);
       }
     } catch (err) {
       console.error('Error fetching stats:', err);

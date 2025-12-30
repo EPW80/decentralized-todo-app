@@ -74,7 +74,11 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
 
       setSuccess(true);
       setDescription('');
-      onTodoCreated();
+
+      // Wait for backend to process the blockchain event before refreshing
+      setTimeout(() => {
+        onTodoCreated();
+      }, 3000);
 
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {

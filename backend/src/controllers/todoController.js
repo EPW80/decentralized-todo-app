@@ -20,7 +20,13 @@ const getTodosByAddress = async (req, res, next) => {
     logger.info(`Found ${todos.length} todos for ${address}`, {
       includeCompleted: includeCompleted !== "false",
       includeDeleted: includeDeleted === "true",
-      todos: todos.map(t => ({ id: t._id, description: t.description, chainId: t.chainId }))
+      todos: todos.map(t => ({
+        id: t._id,
+        description: t.description,
+        chainId: t.chainId,
+        completed: t.completed,
+        deleted: t.deleted
+      }))
     });
 
     res.json({

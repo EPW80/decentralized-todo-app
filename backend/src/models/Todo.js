@@ -15,7 +15,8 @@ const todoSchema = new mongoose.Schema(
     },
     transactionHash: {
       type: String,
-      required: true,
+      required: false, // Optional - not available when syncing directly from contract
+      default: "",
     },
 
     // Task data (mirrors smart contract)

@@ -19,6 +19,97 @@ class BlockchainService {
 
     // Chain-specific confirmations (will be set per chain)
     this.confirmations = {};
+
+    // Health monitoring
+    this.heartbeatInterval = parseInt(process.env.HEARTBEAT_INTERVAL) || 60000; // 1 minute default
+    this.heartbeatTimer = null;
+    this.lastHeartbeat = {}; // Track last successful heartbeat per chain
+    this.consecutiveFailures = {}; // Track consecutive health check failures
+    this.maxConsecutiveFailures = 3; // Restart after 3 consecutive failures
+
+    // Track ethers.js filter errors
+    this.filterErrorCount = {};
+    this.lastFilterErrorTime = {};
+
+    // Install global handler for ethers.js FilterIdEventSubscriber errors
+    this.installGlobalErrorHandler();
+  }
+
+  /**
+   * Install a process-level error handler to catch ethers.js FilterIdEventSubscriber errors
+   * These errors occur when Hardhat returns malformed filter responses
+   */
+  installGlobalErrorHandler() {
+    // Check if we've already installed the handler
+    if (this.globalErrorHandlerInstalled) {
+      return;
+    }
+
+    const errorHandler = (error) => {
+      // Only handle "results is not iterable" errors from FilterIdEventSubscriber
+      if (error && error.message && error.message.includes('results is not iterable')) {
+        const stackTrace = error.stack || '';
+        if (stackTrace.includes('FilterIdEventSubscriber')) {
+          logger.warn('⚠️  Caught ethers.js FilterIdEventSubscriber error:', {
+            error: error.message,
+            note: 'This is a known issue with Hardhat local nodes. Event listeners will be restarted.'
+          });
+
+          // Track error frequency per chain
+          for (const chainId of Object.keys(this.providers)) {
+            if (!this.filterErrorCount[chainId]) {
+              this.filterErrorCount[chainId] = 0;
+            }
+
+            // Increment error count
+            this.filterErrorCount[chainId]++;
+
+            // Check if we should restart (throttle to once per 10 seconds)
+            const now = Date.now();
+            const lastError = this.lastFilterErrorTime[chainId] || 0;
+            if (now - lastError > 10000) {
+              this.lastFilterErrorTime[chainId] = now;
+
+              logger.warn(`🔄 Restarting event listeners for chain ${chainId} due to FilterIdEventSubscriber errors (${this.filterErrorCount[chainId]} total)`);
+
+              // Restart event listeners asynchronously
+              this.restartEventListeners(chainId).catch(err => {
+                logger.error(`Failed to restart event listeners for chain ${chainId}:`, err);
+              });
+            }
+          }
+
+          // Mark as handled (don't crash the process)
+          return true;
+        }
+      }
+
+      // Not our error, let other handlers deal with it
+      return false;
+    };
+
+    // Use uncaughtException for synchronous errors
+    process.on('uncaughtException', (error) => {
+      if (!errorHandler(error)) {
+        // Re-throw if not handled by us
+        logger.error('Uncaught exception:', error);
+        // Don't exit the process for non-critical errors
+      }
+    });
+
+    // Use unhandledRejection for promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      if (reason && typeof reason === 'object') {
+        if (!errorHandler(reason)) {
+          logger.error('Unhandled rejection:', { reason, promise });
+        }
+      } else {
+        logger.error('Unhandled rejection:', { reason, promise });
+      }
+    });
+
+    this.globalErrorHandlerInstalled = true;
+    logger.info('✓ Global error handler installed for ethers.js FilterIdEventSubscriber errors');
   }
 
   async initialize() {
@@ -63,6 +154,10 @@ class BlockchainService {
       }
 
       this.initialized = true;
+
+      // Start health monitoring heartbeat
+      this.startHeartbeat();
+      logger.info(`✓ Health monitoring started (heartbeat interval: ${this.heartbeatInterval}ms)`);
     } catch (error) {
       logger.error('Error initializing blockchain service:', { error: error.message, stack: error.stack });
       throw error;
@@ -210,10 +305,356 @@ class BlockchainService {
     return blockTimes[chainId] || 12; // Default to 12 seconds
   }
 
+  /**
+   * Classify blockchain errors into categories for better error handling
+   * @returns {Object} { type: string, shouldReconnect: boolean, isFatal: boolean }
+   */
+  classifyError(error, chainId) {
+    const errorMessage = error.message?.toLowerCase() || '';
+    const errorCode = error.code;
+
+    // Network connectivity issues
+    if (
+      errorMessage.includes('network') ||
+      errorMessage.includes('timeout') ||
+      errorMessage.includes('econnrefused') ||
+      errorMessage.includes('enotfound') ||
+      errorCode === 'NETWORK_ERROR' ||
+      errorCode === 'TIMEOUT'
+    ) {
+      return {
+        type: 'NETWORK_ERROR',
+        shouldReconnect: true,
+        isFatal: false,
+        message: `Network connectivity issue for chain ${chainId}. Will attempt reconnection.`
+      };
+    }
+
+    // Event filter failures (common with ethers.js + Hardhat)
+    if (
+      errorMessage.includes('filter not found') ||
+      errorMessage.includes('filter') && errorMessage.includes('expired') ||
+      errorCode === 'UNKNOWN_ERROR' && errorMessage.includes('filter') ||
+      errorMessage.includes('results is not iterable') ||
+      errorMessage.includes('filtersubscriber')
+    ) {
+      return {
+        type: 'FILTER_ERROR',
+        shouldReconnect: true,
+        isFatal: false,
+        message: `Event filter error for chain ${chainId}. This is common with Hardhat local nodes. Will restart event listeners.`
+      };
+    }
+
+    // Code/ABI mismatch errors
+    if (
+      errorMessage.includes('invalid event signature') ||
+      errorMessage.includes('no matching event') ||
+      errorMessage.includes('could not decode') ||
+      errorMessage.includes('invalid argument') && errorMessage.includes('event')
+    ) {
+      return {
+        type: 'CODE_MISMATCH',
+        shouldReconnect: false,
+        isFatal: true,
+        message: `Code/ABI mismatch detected for chain ${chainId}. Event listener code does not match contract ABI. Check contract deployment and ABI version.`
+      };
+    }
+
+    // RPC/Provider errors
+    if (
+      errorMessage.includes('rpc') ||
+      errorMessage.includes('bad gateway') ||
+      errorMessage.includes('service unavailable') ||
+      errorCode === 'SERVER_ERROR'
+    ) {
+      return {
+        type: 'RPC_ERROR',
+        shouldReconnect: true,
+        isFatal: false,
+        message: `RPC provider error for chain ${chainId}. Will attempt to use backup RPC if available.`
+      };
+    }
+
+    // Rate limiting
+    if (
+      errorMessage.includes('rate limit') ||
+      errorMessage.includes('too many requests') ||
+      errorCode === 'RATE_LIMIT'
+    ) {
+      return {
+        type: 'RATE_LIMIT',
+        shouldReconnect: true,
+        isFatal: false,
+        message: `Rate limit exceeded for chain ${chainId}. Will retry with exponential backoff.`
+      };
+    }
+
+    // Generic/unknown error
+    return {
+      type: 'UNKNOWN',
+      shouldReconnect: true,
+      isFatal: false,
+      message: `Unknown error for chain ${chainId}: ${error.message}`
+    };
+  }
+
+  /**
+   * Validate that all expected events exist in the contract ABI
+   * Fails fast if any event is missing to prevent runtime errors
+   */
+  validateContractEvents(contract, chainId) {
+    const expectedEvents = [
+      'TaskCreated',
+      'TaskCompleted',
+      'TaskDeleted',
+      'TaskRestored'
+    ];
+
+    const missingEvents = [];
+    const availableEvents = [];
+
+    // Get all events from the contract interface
+    const contractEvents = Object.keys(contract.interface.events || {});
+
+    // Check each expected event
+    for (const eventName of expectedEvents) {
+      try {
+        // Try to get the event fragment from the contract interface
+        const eventFragment = contract.interface.getEvent(eventName);
+        if (eventFragment) {
+          availableEvents.push(eventName);
+        } else {
+          missingEvents.push(eventName);
+        }
+      } catch (error) {
+        // Event not found in contract ABI
+        missingEvents.push(eventName);
+      }
+    }
+
+    // If any events are missing, fail fast with detailed error
+    if (missingEvents.length > 0) {
+      const errorMessage = [
+        `❌ Contract event validation failed for chain ${chainId}`,
+        ``,
+        `Missing events: ${missingEvents.join(', ')}`,
+        `Available events in contract: ${contractEvents.join(', ')}`,
+        ``,
+        `This indicates a mismatch between the contract ABI and the event listeners.`,
+        `Please ensure the contract is deployed correctly and the ABI is up to date.`
+      ].join('\n');
+
+      logger.error(errorMessage);
+      throw new Error(`Contract event validation failed: Missing events ${missingEvents.join(', ')}`);
+    }
+
+    logger.info(`✓ Contract event validation passed for chain ${chainId}: ${availableEvents.join(', ')}`);
+  }
+
+  /**
+   * Start periodic health monitoring heartbeat
+   */
+  startHeartbeat() {
+    // Clear any existing heartbeat timer
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+    }
+
+    // Run initial health check
+    this.performHealthCheck();
+
+    // Set up periodic health checks
+    this.heartbeatTimer = setInterval(() => {
+      this.performHealthCheck();
+    }, this.heartbeatInterval);
+
+    logger.info(`💓 Heartbeat monitoring started (interval: ${this.heartbeatInterval}ms)`);
+  }
+
+  /**
+   * Stop heartbeat monitoring
+   */
+  stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+      logger.info('💓 Heartbeat monitoring stopped');
+    }
+  }
+
+  /**
+   * Perform health check on all active chains
+   */
+  async performHealthCheck() {
+    const timestamp = new Date().toISOString();
+
+    for (const chainId of Object.keys(this.providers)) {
+      try {
+        await this.checkChainHealth(parseInt(chainId));
+      } catch (error) {
+        logger.error(`Health check failed for chain ${chainId}:`, {
+          error: error.message,
+          timestamp
+        });
+      }
+    }
+  }
+
+  /**
+   * Check health of a specific chain and auto-restart if needed
+   */
+  async checkChainHealth(chainId) {
+    const provider = this.providers[chainId];
+    const contract = this.contracts[chainId];
+
+    if (!provider || !contract) {
+      logger.warn(`Health check skipped for chain ${chainId}: No provider or contract`);
+      return;
+    }
+
+    try {
+      // Test 1: Check if provider is responsive
+      const blockNumber = await Promise.race([
+        provider.getBlockNumber(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Provider timeout')), 5000)
+        )
+      ]);
+
+      // Test 2: Check if event listeners are marked as active
+      const listenersActive = this.eventListenersActive[chainId];
+
+      // Test 3: Check if we're still processing blocks (compare with last processed block)
+      const lastBlock = this.lastProcessedBlock[chainId];
+      const blockStale = lastBlock && (blockNumber - lastBlock) > 100; // More than 100 blocks behind
+
+      // Initialize consecutive failures counter
+      if (!this.consecutiveFailures[chainId]) {
+        this.consecutiveFailures[chainId] = 0;
+      }
+
+      // Determine health status
+      let healthIssues = [];
+
+      if (!listenersActive) {
+        healthIssues.push('Event listeners marked as inactive');
+      }
+
+      if (blockStale) {
+        healthIssues.push(`Block processing stale (current: ${blockNumber}, last processed: ${lastBlock})`);
+      }
+
+      // If there are health issues, increment failure counter
+      if (healthIssues.length > 0) {
+        this.consecutiveFailures[chainId]++;
+
+        logger.warn(`⚠️  Health check issues for chain ${chainId} (failure ${this.consecutiveFailures[chainId]}/${this.maxConsecutiveFailures}):`, {
+          issues: healthIssues,
+          blockNumber,
+          lastProcessedBlock: lastBlock,
+          listenersActive
+        });
+
+        // Auto-restart if consecutive failures exceed threshold
+        if (this.consecutiveFailures[chainId] >= this.maxConsecutiveFailures) {
+          logger.warn(`🔄 Auto-restarting event listeners for chain ${chainId} due to ${this.consecutiveFailures[chainId]} consecutive health check failures`);
+
+          // Reset failure counter before restart
+          this.consecutiveFailures[chainId] = 0;
+
+          // Restart event listeners
+          await this.restartEventListeners(chainId);
+        }
+      } else {
+        // Health check passed - reset consecutive failures
+        if (this.consecutiveFailures[chainId] > 0) {
+          logger.info(`✅ Health restored for chain ${chainId} after ${this.consecutiveFailures[chainId]} failures`);
+          this.consecutiveFailures[chainId] = 0;
+        }
+
+        // Update last successful heartbeat
+        this.lastHeartbeat[chainId] = new Date();
+
+        // Periodic health status log (every 10 checks, roughly 10 minutes with default settings)
+        const checkCount = Math.floor((Date.now() - (this.lastHeartbeat[chainId]?.getTime() || 0)) / this.heartbeatInterval);
+        if (checkCount % 10 === 0) {
+          logger.info(`💓 Health check passed for chain ${chainId}:`, {
+            blockNumber,
+            lastProcessedBlock: lastBlock,
+            listenersActive,
+            uptime: this.lastHeartbeat[chainId] ? `${Math.floor((Date.now() - this.lastHeartbeat[chainId].getTime()) / 60000)} minutes` : 'N/A'
+          });
+        }
+      }
+    } catch (error) {
+      this.consecutiveFailures[chainId]++;
+
+      logger.error(`❌ Health check error for chain ${chainId} (failure ${this.consecutiveFailures[chainId]}/${this.maxConsecutiveFailures}):`, {
+        error: error.message,
+        stack: error.stack
+      });
+
+      // Auto-restart if consecutive failures exceed threshold
+      if (this.consecutiveFailures[chainId] >= this.maxConsecutiveFailures) {
+        logger.error(`🔄 Auto-restarting event listeners for chain ${chainId} due to ${this.consecutiveFailures[chainId]} consecutive health check failures`);
+
+        // Reset failure counter
+        this.consecutiveFailures[chainId] = 0;
+
+        // Attempt to restart
+        try {
+          await this.restartEventListeners(chainId);
+        } catch (restartError) {
+          logger.error(`Failed to auto-restart chain ${chainId}:`, {
+            error: restartError.message,
+            stack: restartError.stack
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Restart event listeners for a chain without full reconnection
+   */
+  async restartEventListeners(chainId) {
+    logger.info(`Restarting event listeners for chain ${chainId}...`);
+
+    try {
+      // Remove old listeners
+      const contract = this.contracts[chainId];
+      if (contract) {
+        contract.removeAllListeners();
+        logger.info(`Removed old listeners for chain ${chainId}`);
+      }
+
+      // Restart event listeners
+      await this.startEventListeners(chainId);
+
+      // Recover any missed events
+      await this.recoverMissedEvents(chainId);
+
+      logger.info(`✅ Successfully restarted event listeners for chain ${chainId}`);
+    } catch (error) {
+      logger.error(`Failed to restart event listeners for chain ${chainId}:`, {
+        error: error.message,
+        stack: error.stack
+      });
+
+      // If restart fails, try full reconnection
+      logger.info(`Attempting full reconnection for chain ${chainId}...`);
+      await this.reconnectProvider(chainId, 'HEALTH_CHECK_FAILURE');
+    }
+  }
+
   async startEventListeners(chainId) {
     const contract = this.contracts[chainId];
     const provider = this.providers[chainId];
     if (!contract || !provider) return;
+
+    // Validate event names match contract ABI
+    this.validateContractEvents(contract, chainId);
 
     // Remove existing listeners to prevent memory leaks
     if (this.eventHandlers[chainId]) {
@@ -247,9 +688,44 @@ class BlockchainService {
     const handlers = {
       // Provider error handler
       providerError: async (error) => {
-        logger.error(`Provider error for chain ${chainId}:`, { error: error.message, stack: error.stack });
+        // Classify the error to determine appropriate response
+        const classification = this.classifyError(error, chainId);
+
+        // Log with appropriate severity based on error type
+        if (classification.isFatal) {
+          logger.error(`🚨 FATAL ${classification.type} for chain ${chainId}:`, {
+            message: classification.message,
+            error: error.message,
+            stack: error.stack,
+            shouldReconnect: classification.shouldReconnect
+          });
+        } else if (classification.type === 'FILTER_ERROR') {
+          logger.warn(`⚠️  ${classification.type} for chain ${chainId}:`, {
+            message: classification.message,
+            error: error.message,
+            note: 'This is expected with Hardhat local nodes and will be handled automatically'
+          });
+        } else {
+          logger.error(`❌ ${classification.type} for chain ${chainId}:`, {
+            message: classification.message,
+            error: error.message,
+            stack: error.stack
+          });
+        }
+
+        // Mark event listeners as inactive
         this.eventListenersActive[chainId] = false;
-        await this.reconnectProvider(chainId);
+
+        // Handle based on error type
+        if (classification.isFatal) {
+          logger.error(`Chain ${chainId} marked as FAILED due to fatal error. Manual intervention required.`);
+          // Don't attempt reconnection for fatal errors
+          return;
+        }
+
+        if (classification.shouldReconnect) {
+          await this.reconnectProvider(chainId, classification.type);
+        }
       },
 
       // Block update handler
@@ -335,6 +811,8 @@ class BlockchainService {
     }
 
     // Attach contract event handlers
+    // Note: Contracts don't support 'error' events - only providers do
+    // Error handling is done via the global error handler and provider error handler
     contract.on('TaskCreated', handlers.taskCreated);
     contract.on('TaskCompleted', handlers.taskCompleted);
     contract.on('TaskDeleted', handlers.taskDeleted);
@@ -476,23 +954,81 @@ class BlockchainService {
   }
 
   /**
-   * Reconnect provider with exponential backoff
+   * Get health status for all chains
    */
-  async reconnectProvider(chainId) {
+  getHealthStatus() {
+    const status = {};
+
+    for (const chainId of Object.keys(this.providers)) {
+      const id = parseInt(chainId);
+      status[chainId] = {
+        eventListenersActive: this.eventListenersActive[id] || false,
+        lastHeartbeat: this.lastHeartbeat[id] || null,
+        consecutiveFailures: this.consecutiveFailures[id] || 0,
+        lastProcessedBlock: this.lastProcessedBlock[id] || null,
+        reconnectAttempts: this.reconnectAttempts[id] || 0
+      };
+    }
+
+    return {
+      heartbeatInterval: this.heartbeatInterval,
+      maxConsecutiveFailures: this.maxConsecutiveFailures,
+      chains: status
+    };
+  }
+
+  /**
+   * Graceful shutdown - stop heartbeat and cleanup
+   */
+  async shutdown() {
+    logger.info('Shutting down blockchain service...');
+
+    // Stop heartbeat monitoring
+    this.stopHeartbeat();
+
+    // Remove all event listeners
+    for (const [chainId, contract] of Object.entries(this.contracts)) {
+      try {
+        if (contract) {
+          contract.removeAllListeners();
+          logger.info(`Removed listeners for chain ${chainId}`);
+        }
+      } catch (error) {
+        logger.error(`Error removing listeners for chain ${chainId}:`, { error: error.message });
+      }
+    }
+
+    this.initialized = false;
+    logger.info('✓ Blockchain service shutdown complete');
+  }
+
+  /**
+   * Reconnect provider with exponential backoff
+   * @param {number} chainId - The chain ID to reconnect
+   * @param {string} errorType - The type of error that triggered reconnection (for better logging)
+   */
+  async reconnectProvider(chainId, errorType = 'UNKNOWN') {
     if (!this.reconnectAttempts[chainId]) {
       this.reconnectAttempts[chainId] = 0;
     }
 
     if (this.reconnectAttempts[chainId] >= this.maxReconnectAttempts) {
-      logger.error(`Max reconnection attempts reached for chain ${chainId}`);
+      logger.error(`❌ Max reconnection attempts (${this.maxReconnectAttempts}) reached for chain ${chainId}`, {
+        errorType,
+        lastAttempt: new Date().toISOString(),
+        recommendation: 'Check network connectivity and RPC endpoint health'
+      });
       return;
     }
 
     this.reconnectAttempts[chainId]++;
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts[chainId] - 1);
 
+    // Special handling for filter errors - use minimal delay
+    const actualDelay = errorType === 'FILTER_ERROR' ? Math.min(delay, 1000) : delay;
+
     logger.info(
-      `Attempting to reconnect to chain ${chainId} (attempt ${this.reconnectAttempts[chainId]}/${this.maxReconnectAttempts}) in ${delay}ms...`
+      `🔄 Attempting to reconnect to chain ${chainId} due to ${errorType} (attempt ${this.reconnectAttempts[chainId]}/${this.maxReconnectAttempts}) in ${actualDelay}ms...`
     );
 
     setTimeout(async () => {
@@ -504,33 +1040,67 @@ class BlockchainService {
           return;
         }
 
-        // Remove old listeners
+        logger.info(`Reconnection process started for chain ${chainId} (${network.name})`, {
+          errorType,
+          attempt: this.reconnectAttempts[chainId]
+        });
+
+        // Remove old listeners to prevent memory leaks
         const oldContract = this.contracts[chainId];
         if (oldContract) {
           oldContract.removeAllListeners();
+          logger.info(`Removed old event listeners for chain ${chainId}`);
         }
 
-        // Create new resilient provider with failover support
-        const provider = this.createResilientProvider(network);
-        this.providers[chainId] = provider;
+        // For filter errors, we can reuse the existing provider
+        // For network errors, create a new provider
+        if (errorType === 'FILTER_ERROR') {
+          logger.info(`Reusing existing provider for filter error recovery on chain ${chainId}`);
+          // Just restart event listeners with existing provider
+          await this.startEventListeners(chainId);
+        } else {
+          logger.info(`Creating new provider for chain ${chainId} due to ${errorType}`);
 
-        // Recreate contract instance
-        const contractAddress = contractAddresses[chainId];
-        const contract = new ethers.Contract(contractAddress, contractABI, provider);
-        this.contracts[chainId] = contract;
+          // Create new resilient provider with failover support
+          const provider = this.createResilientProvider(network);
+          this.providers[chainId] = provider;
 
-        // Restart event listeners
-        await this.startEventListeners(chainId);
+          // Recreate contract instance
+          const contractAddress = contractAddresses[chainId];
+          const contract = new ethers.Contract(contractAddress, contractABI, provider);
+          this.contracts[chainId] = contract;
+
+          // Restart event listeners
+          await this.startEventListeners(chainId);
+        }
 
         // Reset reconnection attempts on success
         this.reconnectAttempts[chainId] = 0;
 
-        logger.info(`✓ Successfully reconnected to chain ${chainId}`);
+        logger.info(`✅ Successfully reconnected to chain ${chainId} after ${errorType}`, {
+          network: network.name,
+          eventListenersActive: this.eventListenersActive[chainId]
+        });
       } catch (error) {
-        logger.error(`Failed to reconnect to chain ${chainId}:`, { error: error.message, stack: error.stack });
-        await this.reconnectProvider(chainId);
+        // Classify the new error
+        const classification = this.classifyError(error, chainId);
+
+        logger.error(`Reconnection failed for chain ${chainId}:`, {
+          originalErrorType: errorType,
+          newErrorType: classification.type,
+          error: error.message,
+          stack: error.stack,
+          willRetry: classification.shouldReconnect && !classification.isFatal
+        });
+
+        // Only retry if the error is not fatal
+        if (!classification.isFatal && classification.shouldReconnect) {
+          await this.reconnectProvider(chainId, classification.type);
+        } else {
+          logger.error(`Stopping reconnection attempts for chain ${chainId} due to ${classification.type}`);
+        }
       }
-    }, delay);
+    }, actualDelay);
   }
 
   /**

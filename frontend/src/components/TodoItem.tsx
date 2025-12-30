@@ -58,6 +58,11 @@ const TodoItem: React.FC<TodoItemProps> = ({
       return;
     }
 
+    // Prevent duplicate clicks or completing already completed tasks
+    if (isProcessing || localTodo.completed) {
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
 
@@ -79,10 +84,10 @@ const TodoItem: React.FC<TodoItemProps> = ({
     try {
       await blockchainService.completeTask(provider, chainId, todo.blockchainId);
 
-      // Wait for backend to sync
+      // Wait for backend to sync (increased to 4s to ensure event is processed)
       setTimeout(() => {
         onTodoUpdated();
-      }, 2000);
+      }, 4000);
     } catch (err: any) {
       console.error('Error completing task:', err);
       setError(err.message || 'Failed to complete task');
@@ -100,6 +105,11 @@ const TodoItem: React.FC<TodoItemProps> = ({
   const handleDelete = async () => {
     if (!provider || !chainId) {
       setError('Please connect your wallet');
+      return;
+    }
+
+    // Prevent duplicate clicks or deleting already deleted tasks
+    if (isProcessing || localTodo.deleted) {
       return;
     }
 
@@ -126,10 +136,10 @@ const TodoItem: React.FC<TodoItemProps> = ({
     try {
       await blockchainService.deleteTask(provider, chainId, todo.blockchainId);
 
-      // Wait for backend to sync
+      // Wait for backend to sync (increased to 4s to ensure event is processed)
       setTimeout(() => {
         onTodoUpdated();
-      }, 2000);
+      }, 4000);
     } catch (err: any) {
       console.error('Error deleting task:', err);
       setError(err.message || 'Failed to delete task');

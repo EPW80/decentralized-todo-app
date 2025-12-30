@@ -29,26 +29,25 @@ async function syncBlock(chainId, fromBlock, toBlock = null) {
       throw new Error(`Contract or provider not available for chain ${chainId}`);
     }
 
-    // Query TaskAdded events
-    logger.info('Querying TaskAdded events...');
-    const addedFilter = contract.filters.TaskAdded();
+    // Query TaskCreated events
+    logger.info('Querying TaskCreated events...');
+    const addedFilter = contract.filters.TaskCreated();
     const addedEvents = await contract.queryFilter(addedFilter, fromBlock, actualToBlock);
-    logger.info(`Found ${addedEvents.length} TaskAdded events`);
+    logger.info(`Found ${addedEvents.length} TaskCreated events`);
 
     for (const event of addedEvents) {
-      logger.info(`Processing TaskAdded at block ${event.blockNumber}:`, {
-        user: event.args.user,
+      logger.info(`Processing TaskCreated at block ${event.blockNumber}:`, {
+        owner: event.args.owner,
         taskId: event.args.taskId?.toString(),
         description: event.args.description,
       });
 
-      await blockchainService.handleTaskAdded(
-        event.args.user,
+      await blockchainService.syncTaskCreated(
+        chainId,
         event.args.taskId,
+        event.args.owner,
         event.args.description,
         event.args.timestamp,
-        chainId,
-        event.blockNumber,
         event.transactionHash
       );
     }
@@ -60,13 +59,15 @@ async function syncBlock(chainId, fromBlock, toBlock = null) {
     logger.info(`Found ${completedEvents.length} TaskCompleted events`);
 
     for (const event of completedEvents) {
-      await blockchainService.handleTaskCompleted(
-        event.args.user,
-        event.args.taskId,
-        event.args.timestamp,
+      logger.info(`Processing TaskCompleted at block ${event.blockNumber}:`, {
+        owner: event.args.owner,
+        taskId: event.args.taskId?.toString(),
+      });
+
+      await blockchainService.syncTaskCompleted(
         chainId,
-        event.blockNumber,
-        event.transactionHash
+        event.args.taskId,
+        event.args.timestamp
       );
     }
 
