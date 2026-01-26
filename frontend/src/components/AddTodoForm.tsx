@@ -13,6 +13,7 @@ interface AddTodoFormProps {
 const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
   const { provider, chainId } = useWeb3();
   const [description, setDescription] = useState('');
+  const [dueDate, setDueDate] = useState<string>('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -57,8 +58,9 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
     setSuccess(false);
 
     try {
-      // Create task on blockchain
-      const result = await blockchainService.createTask(provider, chainId, description);
+      // Create task on blockchain with optional due date
+      const dueDateObj = dueDate ? new Date(dueDate) : null;
+      const result = await blockchainService.createTask(provider, chainId, description, dueDateObj);
 
       // Backend will automatically sync via event listener
       // But we can also manually trigger sync if needed
@@ -74,6 +76,7 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
 
       setSuccess(true);
       setDescription('');
+      setDueDate('');
 
       // Wait for backend to process the blockchain event before refreshing
       setTimeout(() => {
@@ -170,6 +173,39 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
               {description.length}/500
             </span>
           </div>
+        </div>
+
+        {/* Due Date Picker */}
+        <div>
+          <label htmlFor="due-date" className="block text-sm font-semibold text-gray-700 mb-2.5 flex items-center gap-2">
+            <svg className="w-4 h-4" style={{ color: networkTheme.primaryColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Due Date (Optional)
+          </label>
+          <div className="relative group">
+            <input
+              type="date"
+              id="due-date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full px-5 py-3.5 border-2 rounded-xl focus:ring-4 transition-all duration-300 text-gray-700 shadow-sm hover:shadow-md focus:shadow-lg bg-white/90 backdrop-blur-sm"
+              style={{
+                borderColor: `${networkTheme.primaryColor}33`,
+              }}
+              disabled={isCreating}
+              aria-label="Due date"
+            />
+          </div>
+          {dueDate && (
+            <p className="mt-2 text-xs text-gray-600 px-1 flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: networkTheme.primaryColor }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Task will be due on {new Date(dueDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          )}
         </div>
 
         {error && (

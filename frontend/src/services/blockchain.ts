@@ -43,11 +43,14 @@ export const blockchainService = {
   },
 
   // Create a new task
-  async createTask(provider: BrowserProvider, chainId: number, description: string) {
+  async createTask(provider: BrowserProvider, chainId: number, description: string, dueDate?: Date | null) {
     const contract = await this.getContractWithSigner(provider, chainId);
     if (!contract) throw new Error('Contract not available');
 
-    const tx = await contract.createTask(description);
+    // Convert due date to Unix timestamp (0 if no due date)
+    const dueDateTimestamp = dueDate ? Math.floor(dueDate.getTime() / 1000) : 0;
+
+    const tx = await contract.createTask(description, dueDateTimestamp);
     const receipt = await tx.wait();
 
     // Extract taskId from event
@@ -87,6 +90,16 @@ export const blockchainService = {
     if (!contract) throw new Error('Contract not available');
 
     const tx = await contract.deleteTask(taskId);
+    const receipt = await tx.wait();
+    return { transactionHash: receipt.hash };
+  },
+
+  // Update a task's description
+  async updateTask(provider: BrowserProvider, chainId: number, taskId: string, newDescription: string) {
+    const contract = await this.getContractWithSigner(provider, chainId);
+    if (!contract) throw new Error('Contract not available');
+
+    const tx = await contract.updateTask(taskId, newDescription);
     const receipt = await tx.wait();
     return { transactionHash: receipt.hash };
   },
