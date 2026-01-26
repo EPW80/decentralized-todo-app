@@ -2,19 +2,46 @@ const Todo = require("../models/Todo");
 const blockchainService = require("../services/blockchainService");
 
 /**
- * Get all todos for a specific address
+ * Get all todos for a specific address with advanced filtering and sorting
  * GET /api/todos/:address
+ * Query params:
+ *   - includeCompleted: boolean (default: true)
+ *   - includeDeleted: boolean (default: false)
+ *   - search: string (searches in description)
+ *   - dueFilter: 'overdue' | 'today' | 'week' | 'all'
+ *   - sort: 'newest' | 'oldest' | 'dueDate' | 'alpha'
  */
 const getTodosByAddress = async (req, res, next) => {
   try {
     const { address } = req.params;
-    const { includeCompleted, includeDeleted } = req.query;
+    const {
+      includeCompleted,
+      includeDeleted,
+      search,
+      dueFilter,
+      sort
+    } = req.query;
 
-    const todos = await Todo.findByOwner(
-      address,
-      includeCompleted !== "false",
-      includeDeleted === "true"
-    );
+    let todos;
+
+    // If advanced filters are used, use the new method
+    if (search || dueFilter || sort) {
+      const filters = {
+        includeCompleted: includeCompleted !== "false",
+        includeDeleted: includeDeleted === "true",
+        search,
+        dueFilter,
+        sort
+      };
+      todos = await Todo.findByOwnerWithFilters(address, filters);
+    } else {
+      // Use original method for backward compatibility
+      todos = await Todo.findByOwner(
+        address,
+        includeCompleted !== "false",
+        includeDeleted === "true"
+      );
+    }
 
     const logger = require('../utils/logger');
     logger.info(`Found ${todos.length} todos for ${address}`, {
@@ -292,6 +319,58 @@ const restoreTodo = async (req, res, next) => {
   }
 };
 
+/**
+ * Update a todo's description
+ * PUT /api/todos/:id
+ */
+const updateTodo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { description } = req.body;
+
+    if (!description || description.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Description is required",
+      });
+    }
+
+    if (description.length > 500) {
+      return res.status(400).json({
+        success: false,
+        error: "Description must be 500 characters or less",
+      });
+    }
+
+    const todo = await Todo.findById(id);
+
+    if (!todo) {
+      return res.status(404).json({
+        success: false,
+        error: "Todo not found",
+      });
+    }
+
+    if (todo.deleted) {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot update deleted todo",
+      });
+    }
+
+    // Update in database
+    await todo.updateDescription(description.trim());
+
+    res.json({
+      success: true,
+      message: "Todo updated successfully",
+      data: todo,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTodosByAddress,
   getTodoById,
@@ -299,4 +378,5 @@ module.exports = {
   getUserStats,
   syncTodoFromBlockchain,
   restoreTodo,
+  updateTodo,
 };

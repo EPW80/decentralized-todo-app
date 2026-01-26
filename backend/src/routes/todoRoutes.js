@@ -6,6 +6,7 @@ const {
   getUserStats,
   syncTodoFromBlockchain,
   restoreTodo,
+  updateTodo,
 } = require("../controllers/todoController");
 const {
   validateAddress,
@@ -86,5 +87,10 @@ router.post(
   validateRestoreRequest,
   restoreTodo
 );
+
+// Update a todo's description (protected)
+// PUT /api/todos/:id
+// Body: { description }
+router.put("/:id", verifyJWT, updateTodo);
 
 module.exports = router;

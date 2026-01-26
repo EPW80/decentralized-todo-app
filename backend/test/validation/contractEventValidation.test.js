@@ -54,10 +54,14 @@ describe('Contract Event Validation', () => {
     });
 
     test('should not have any V1 events', () => {
-      const v1Events = ['TaskAdded', 'TaskUpdated'];
+      const v1Events = ['TaskAdded'];
       v1Events.forEach(event => {
         expect(contractEvents).not.toContain(event);
       });
+    });
+
+    test('should have TaskUpdated event', () => {
+      expect(contractEvents).toContain('TaskUpdated');
     });
   });
 
@@ -205,7 +209,7 @@ describe('Contract Event Validation', () => {
       expect(event).toBeDefined();
 
       const paramNames = event.inputs.map(input => input.name);
-      expect(paramNames).toEqual(['taskId', 'owner', 'description', 'timestamp']);
+      expect(paramNames).toEqual(['taskId', 'owner', 'description', 'timestamp', 'dueDate']);
 
       const handlerMatch = serviceCode.match(/taskCreated:\s*async\s*\(([^)]+)\)/);
       expect(handlerMatch).toBeTruthy();
@@ -215,6 +219,15 @@ describe('Contract Event Validation', () => {
       expect(handlerParams).toContain('owner');
       expect(handlerParams).toContain('description');
       expect(handlerParams).toContain('timestamp');
+      expect(handlerParams).toContain('dueDate');
+    });
+
+    test('TaskUpdated should have correct parameters', () => {
+      const event = contractABI.find(item => item.type === 'event' && item.name === 'TaskUpdated');
+      expect(event).toBeDefined();
+
+      const paramNames = event.inputs.map(input => input.name);
+      expect(paramNames).toEqual(['taskId', 'owner', 'oldDescription', 'newDescription', 'timestamp']);
     });
 
     test('TaskCompleted should have correct parameters', () => {
@@ -297,8 +310,7 @@ describe('Migration Safety Checks', () => {
     const obsoleteMethods = [
       'handleTaskAdded',
       'handleTaskUpdated',
-      'syncTaskAdded',
-      'syncTaskUpdated'
+      'syncTaskAdded'
     ];
 
     filesToCheck.forEach(filePath => {

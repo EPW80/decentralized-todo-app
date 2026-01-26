@@ -164,6 +164,72 @@ todoSchema.statics.findByOwner = function (
   return this.find(query).sort({ blockchainCreatedAt: -1 });
 };
 
+todoSchema.statics.findByOwnerWithFilters = function (ownerAddress, filters = {}) {
+  const query = {
+    owner: ownerAddress.toLowerCase(),
+  };
+
+  // Apply completed filter
+  if (filters.includeCompleted === false) {
+    query.completed = false;
+  }
+
+  // Apply deleted filter
+  if (!filters.includeDeleted) {
+    query.deleted = false;
+  }
+
+  // Apply search filter
+  if (filters.search) {
+    query.description = { $regex: filters.search, $options: 'i' };
+  }
+
+  // Apply due date filter
+  if (filters.dueFilter && filters.dueFilter !== 'all') {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const weekEnd = new Date(today);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    switch (filters.dueFilter) {
+      case 'overdue':
+        query.dueDate = { $lt: now, $ne: null };
+        query.completed = false;
+        break;
+      case 'today':
+        query.dueDate = { $gte: today, $lt: tomorrow };
+        break;
+      case 'week':
+        query.dueDate = { $gte: today, $lt: weekEnd };
+        break;
+    }
+  }
+
+  // Build sort option
+  let sortOption = { blockchainCreatedAt: -1 }; // default
+  if (filters.sort) {
+    switch (filters.sort) {
+      case 'oldest':
+        sortOption = { blockchainCreatedAt: 1 };
+        break;
+      case 'dueDate':
+        sortOption = { dueDate: 1, blockchainCreatedAt: -1 };
+        break;
+      case 'alpha':
+        sortOption = { description: 1 };
+        break;
+      case 'newest':
+      default:
+        sortOption = { blockchainCreatedAt: -1 };
+        break;
+    }
+  }
+
+  return this.find(query).sort(sortOption);
+};
+
 todoSchema.statics.findByBlockchainId = function (chainId, blockchainId) {
   return this.findOne({ chainId, blockchainId });
 };
