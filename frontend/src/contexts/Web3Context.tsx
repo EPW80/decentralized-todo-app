@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import type { ReactNode } from 'react';
 import { BrowserProvider } from 'ethers';
 import { apiService } from '../services/api';
+import { isErrorWithCode, toErrorMessage } from '../types/error';
 
 interface WalletState {
   address: string | null;
@@ -20,6 +21,7 @@ interface Web3ContextType extends WalletState {
 
 const Web3Context = createContext<Web3ContextType | undefined>(undefined);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useWeb3 = () => {
   const context = useContext(Web3Context);
   if (!context) {
@@ -72,13 +74,12 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       if (loginResponse.success && loginResponse.token) {
         // Store token in localStorage
         localStorage.setItem('authToken', loginResponse.token);
-        console.log('✓ Authenticated successfully');
       } else {
         throw new Error('Failed to get authentication token');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Authentication error:', error);
-      throw new Error(`Authentication failed: ${error.message}`);
+      throw new Error(`Authentication failed: ${toErrorMessage(error)}`);
     }
   };
 
@@ -88,7 +89,6 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
 
     // Prevent duplicate connection attempts
     if (isConnectingRef.current || walletState.isConnected) {
-      console.log('Connection already in progress or already connected');
       return;
     }
 
@@ -96,7 +96,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     setWalletState((prev) => ({ ...prev, isConnecting: true, error: null }));
 
     try {
-      const browserProvider = new BrowserProvider(window.ethereum as any);
+      const browserProvider = new BrowserProvider(window.ethereum);
       const accounts = await browserProvider.send('eth_requestAccounts', []);
       const network = await browserProvider.getNetwork();
 
@@ -114,18 +114,21 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
 
       // Store connection state
       localStorage.setItem('walletConnected', 'true');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error connecting wallet:', error);
 
       // Handle MetaMask-specific errors gracefully
-      let errorMessage = error.message || 'Failed to connect wallet';
+      let errorMessage = toErrorMessage(error);
 
       // If MetaMask is already processing a request, don't show error to user
-      if (error.code === 'UNKNOWN_ERROR' && error.error?.code === -32002) {
-        console.log('MetaMask is already processing a connection request, ignoring duplicate call');
-        errorMessage = ''; // Don't show error for duplicate requests
-      } else if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
-        errorMessage = 'Connection request was rejected';
+      if (isErrorWithCode(error)) {
+        if (error.code === 'UNKNOWN_ERROR' && 'error' in error &&
+            typeof error.error === 'object' && error.error !== null &&
+            'code' in error.error && error.error.code === -32002) {
+          errorMessage = ''; // Don't show error for duplicate requests
+        } else if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+          errorMessage = 'Connection request was rejected';
+        }
       }
 
       setWalletState((prev) => ({
@@ -161,12 +164,12 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: `0x${chainId.toString(16)}` }],
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If network doesn't exist, we could add it here
       console.error('Error switching network:', error);
       setWalletState((prev) => ({
         ...prev,
-        error: `Failed to switch network: ${error.message}`,
+        error: `Failed to switch network: ${toErrorMessage(error)}`,
       }));
     }
   };
@@ -187,7 +190,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
               ...prev,
               address: accounts[0],
             }));
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error('Re-authentication failed:', error);
             setWalletState((prev) => ({
               ...prev,

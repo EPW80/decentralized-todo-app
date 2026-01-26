@@ -229,7 +229,7 @@ describe('Todo Model', () => {
 
       expect(schema.blockchainId.isRequired).toBe(true);
       expect(schema.chainId.isRequired).toBe(true);
-      expect(schema.transactionHash.isRequired).toBe(true);
+      expect(schema.transactionHash.isRequired).toBe(false); // Optional - not available when syncing from contract
       expect(schema.owner.isRequired).toBe(true);
       expect(schema.description.isRequired).toBe(true);
       expect(schema.blockchainCreatedAt.isRequired).toBe(true);

@@ -23,18 +23,6 @@ const rateLimit = require("express-rate-limit");
 const router = express.Router();
 
 /**
- * Optional JWT authentication middleware
- * Validates JWT if provided, but allows request to continue if not provided
- */
-const optionalAuth = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (token) {
-    return verifyJWT(req, res, next);
-  }
-  next();
-};
-
-/**
  * Strict rate limiter for expensive blockchain operations
  */
 const strictLimiter = rateLimit({

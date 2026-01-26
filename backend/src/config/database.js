@@ -7,7 +7,7 @@ const logger = require("../utils/logger");
  */
 const sanitizeMongoURI = (uri) => {
   if (!uri) return '[NO URI]';
-  return uri.replace(/mongodb(\+srv)?:\/\/([^@]+@)?([^\/]+)/g, 'mongodb://*****@$3');
+  return uri.replace(/mongodb(\+srv)?:\/\/([^@]+@)?([^/]+)/g, 'mongodb://*****@$3');
 };
 
 const connectDB = async () => {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { networkThemes } from '../config/networkThemes';
 import { HexagonPattern } from './patterns';
+import { toErrorMessage, isErrorWithCode } from '../types/error';
 
 interface NetworkSwitcherProps {
   onClose?: () => void;
@@ -46,11 +47,11 @@ const NetworkSwitcher: React.FC<NetworkSwitcherProps> = ({ onClose }) => {
       if (onClose) {
         setTimeout(onClose, 500);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to switch network:', err);
 
       // If the chain hasn't been added to MetaMask
-      if (err.code === 4902) {
+      if (isErrorWithCode(err) && err.code === 4902) {
         try {
           const theme = networkThemes[targetChainId];
           await window.ethereum.request({
@@ -68,13 +69,13 @@ const NetworkSwitcher: React.FC<NetworkSwitcherProps> = ({ onClose }) => {
               },
             ],
           });
-        } catch (addError: any) {
-          setError(`Failed to add network: ${addError.message}`);
+        } catch (addError: unknown) {
+          setError(`Failed to add network: ${toErrorMessage(addError)}`);
         }
-      } else if (err.code === 4001) {
+      } else if (isErrorWithCode(err) && err.code === 4001) {
         setError('Network switch rejected');
       } else {
-        setError(`Failed to switch network: ${err.message}`);
+        setError(`Failed to switch network: ${toErrorMessage(err)}`);
       }
     } finally {
       setSwitching(false);

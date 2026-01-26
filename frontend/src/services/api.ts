@@ -1,36 +1,5 @@
 import axios from 'axios';
-
-// Type definitions
-interface Todo {
-  _id: string;
-  blockchainId: string;
-  chainId: number;
-  transactionHash: string;
-  owner: string;
-  description: string;
-  completed: boolean;
-  blockchainCreatedAt: string;
-  blockchainCompletedAt: string | null;
-  syncStatus: 'synced' | 'pending' | 'error';
-  lastSyncedAt: string;
-  deleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface UserStats {
-  total: number;
-  completed: number;
-  active: number;
-  completionRate: string;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
+import type { Todo, UserStats, ApiResponse } from '../types/todo';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 

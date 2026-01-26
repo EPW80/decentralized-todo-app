@@ -1,20 +1,17 @@
-export interface Todo {
-  _id: string;
-  blockchainId: string;
-  chainId: number;
-  transactionHash: string;
-  owner: string;
-  description: string;
-  completed: boolean;
-  blockchainCreatedAt: string;
-  blockchainCompletedAt: string | null;
-  syncStatus: 'synced' | 'pending' | 'error';
-  lastSyncedAt: string;
-  deleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+// Re-export todo-related types from todo.ts
+export type { Todo, UserStats, ApiResponse } from './todo';
 
+// Re-export error types and utilities
+export type { ErrorWithMessage, ErrorWithCode, EthereumError } from './error';
+export {
+  isErrorWithMessage,
+  isErrorWithCode,
+  isEthereumError,
+  toErrorMessage,
+  getErrorCode,
+} from './error';
+
+// Other application types
 export interface Network {
   chainId: number;
   name: string;
@@ -28,18 +25,4 @@ export interface WalletState {
   isConnecting: boolean;
   isConnected: boolean;
   error: string | null;
-}
-
-export interface UserStats {
-  total: number;
-  completed: number;
-  active: number;
-  completionRate: string;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
 }

@@ -6,23 +6,8 @@ import { useNetworkTheme } from '../hooks/useNetworkTheme';
 import { getNetworkTheme } from '../config/networkThemes';
 import Tooltip from './Tooltip';
 import CopyButton from './CopyButton';
-
-interface Todo {
-  _id: string;
-  blockchainId: string;
-  chainId: number;
-  transactionHash: string;
-  owner: string;
-  description: string;
-  completed: boolean;
-  blockchainCreatedAt: string;
-  blockchainCompletedAt: string | null;
-  syncStatus: 'synced' | 'pending' | 'error';
-  lastSyncedAt: string;
-  deleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Todo } from '../types/todo';
+import { toErrorMessage } from '../types/error';
 
 interface TodoItemProps {
   todo: Todo;
@@ -41,7 +26,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localTodo, setLocalTodo] = useState<Todo>(todo);
-  const currentNetworkTheme = useNetworkTheme();
+  const _currentNetworkTheme = useNetworkTheme();
 
   // Get the theme for the network this todo was created on
   const todoNetworkTheme = getNetworkTheme(todo.chainId);
@@ -88,9 +73,9 @@ const TodoItem: React.FC<TodoItemProps> = ({
       setTimeout(() => {
         onTodoUpdated();
       }, 4000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error completing task:', err);
-      setError(err.message || 'Failed to complete task');
+      setError(toErrorMessage(err) || 'Failed to complete task');
 
       // Revert optimistic update on error
       setLocalTodo(todo);
@@ -140,9 +125,9 @@ const TodoItem: React.FC<TodoItemProps> = ({
       setTimeout(() => {
         onTodoUpdated();
       }, 4000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting task:', err);
-      setError(err.message || 'Failed to delete task');
+      setError(toErrorMessage(err) || 'Failed to delete task');
 
       // Revert optimistic update on error
       setLocalTodo(todo);

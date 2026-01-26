@@ -47,6 +47,7 @@ contract TodoListV2 is
         uint256 createdAt;
         uint256 completedAt;
         uint256 deletedAt;
+        uint256 dueDate;
     }
 
     // ============ State Variables ============
@@ -74,7 +75,8 @@ contract TodoListV2 is
     mapping(address => uint256) public nonces;
 
     // ============ Events ============
-    event TaskCreated(uint256 indexed taskId, address indexed owner, string description, uint256 timestamp);
+    event TaskCreated(uint256 indexed taskId, address indexed owner, string description, uint256 timestamp, uint256 dueDate);
+    event TaskUpdated(uint256 indexed taskId, address indexed owner, string oldDescription, string newDescription, uint256 timestamp);
     event TaskCompleted(uint256 indexed taskId, address indexed owner, uint256 timestamp);
     event TaskDeleted(uint256 indexed taskId, address indexed owner, uint256 timestamp);
     event TaskRestored(uint256 indexed taskId, address indexed owner, uint256 timestamp);
@@ -155,9 +157,10 @@ contract TodoListV2 is
     /**
      * @dev Create a new task
      * @param _description The description of the task
+     * @param _dueDate Optional due date timestamp (0 for no due date)
      * @return taskId The ID of the created task
      */
-    function createTask(string memory _description)
+    function createTask(string memory _description, uint256 _dueDate)
         external
         nonReentrant
         whenNotPaused
@@ -168,6 +171,9 @@ contract TodoListV2 is
         require(bytes(_description).length > 0, "Description cannot be empty");
         require(bytes(_description).length <= 500, "Description too long");
         require(userTaskCount[msg.sender] < maxTasksPerUser, "Maximum tasks limit reached");
+        if (_dueDate > 0) {
+            require(_dueDate > block.timestamp, "Due date must be in the future");
+        }
 
         taskCounter++;
         uint256 taskId = taskCounter;
@@ -180,14 +186,15 @@ contract TodoListV2 is
             deleted: false,
             createdAt: block.timestamp,
             completedAt: 0,
-            deletedAt: 0
+            deletedAt: 0,
+            dueDate: _dueDate
         });
 
         tasks[taskId] = newTask;
         userTasks[msg.sender].push(taskId);
         userTaskCount[msg.sender]++;
 
-        emit TaskCreated(taskId, msg.sender, _description, block.timestamp);
+        emit TaskCreated(taskId, msg.sender, _description, block.timestamp, _dueDate);
 
         return taskId;
     }
@@ -254,6 +261,30 @@ contract TodoListV2 is
         userTaskCount[msg.sender]++;
 
         emit TaskRestored(_taskId, msg.sender, block.timestamp);
+    }
+
+    /**
+     * @dev Update task description
+     * @param _taskId The ID of the task to update
+     * @param _newDescription New description for the task
+     */
+    function updateTask(uint256 _taskId, string memory _newDescription)
+        external
+        nonReentrant
+        whenNotPaused
+        circuitBreakerCheck
+        rateLimited
+        taskExists(_taskId)
+        onlyTaskOwner(_taskId)
+        notDeleted(_taskId)
+    {
+        require(bytes(_newDescription).length > 0, "Description cannot be empty");
+        require(bytes(_newDescription).length <= 500, "Description too long");
+
+        string memory oldDescription = tasks[_taskId].description;
+        tasks[_taskId].description = _newDescription;
+
+        emit TaskUpdated(_taskId, msg.sender, oldDescription, _newDescription, block.timestamp);
     }
 
     // ============ Access Control Functions ============
@@ -572,7 +603,7 @@ contract TodoListV2 is
      * @return Version identifier
      */
     function version() external pure returns (string memory) {
-        return "2.0.0";
+        return "2.1.0";
     }
 
     // ============ Receive Function ============

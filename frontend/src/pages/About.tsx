@@ -221,6 +221,68 @@ const About: React.FC = () => {
             </div>
           </div>
 
+          {/* Deployment Information */}
+          <div className="card">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 gradient-warning rounded-xl flex items-center justify-center shadow-glow-sm">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">Contract Deployments</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-block w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span>
+                  <h3 className="font-bold text-blue-900">Localhost (Chain ID: 31337)</h3>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-gray-600 font-medium">Contract Address:</span>
+                    <code className="text-blue-700 bg-white px-3 py-2 rounded-lg border border-blue-200 font-mono text-xs break-all">
+                      {import.meta.env.VITE_CONTRACT_ADDRESS_31337 || 'Not deployed'}
+                    </code>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="text-xs text-gray-500">Status:</span>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                      Active
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-block w-3 h-3 bg-purple-500 rounded-full animate-pulse"></span>
+                  <h3 className="font-bold text-purple-900">Sepolia (Chain ID: 11155111)</h3>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-gray-600 font-medium">Contract Address:</span>
+                    <code className="text-purple-700 bg-white px-3 py-2 rounded-lg border border-purple-200 font-mono text-xs break-all">
+                      {import.meta.env.VITE_CONTRACT_ADDRESS_11155111 || 'Not deployed'}
+                    </code>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="text-xs text-gray-500">Status:</span>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                      Active
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-900">
+                <span className="font-semibold">💡 Tip:</span> Connect your wallet and switch to one of these networks to interact with the smart contract.
+              </p>
+            </div>
+          </div>
+
           {/* Footer */}
           <div className="glass-effect-dark rounded-2xl p-8 text-center border-2 border-purple-200">
             <p className="text-gray-600 leading-relaxed">

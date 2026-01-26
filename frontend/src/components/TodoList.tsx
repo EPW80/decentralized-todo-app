@@ -4,30 +4,7 @@ import { apiService } from '../services/api';
 import TodoItem from './TodoItem';
 import AddTodoForm from './AddTodoForm';
 import { HexagonPattern, NetworkNodes, DigitalGrid, ChainLinkPattern } from './patterns';
-
-interface Todo {
-  _id: string;
-  blockchainId: string;
-  chainId: number;
-  transactionHash: string;
-  owner: string;
-  description: string;
-  completed: boolean;
-  blockchainCreatedAt: string;
-  blockchainCompletedAt: string | null;
-  syncStatus: 'synced' | 'pending' | 'error';
-  lastSyncedAt: string;
-  deleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface UserStats {
-  total: number;
-  completed: number;
-  active: number;
-  completionRate: string;
-}
+import type { Todo, UserStats } from '../types/todo';
 
 const TodoList: React.FC = () => {
   const { address, isConnected } = useWeb3();
@@ -49,13 +26,7 @@ const TodoList: React.FC = () => {
 
     try {
       const response = await apiService.getTodosByAddress(address, true, false);
-      console.log('Todos API Response:', response);
       if (response.success && response.data) {
-        console.log(`Setting ${response.data.length} todos`);
-        console.log('Todo completed statuses:', response.data.map((t: any) => ({
-          desc: t.description?.substring(0, 30),
-          completed: t.completed
-        })));
         setTodos(response.data);
       } else {
         console.error('Todos fetch failed:', response);
@@ -78,9 +49,7 @@ const TodoList: React.FC = () => {
 
     try {
       const response = await apiService.getUserStats(address);
-      console.log('Stats API Response:', response);
       if (response.success && response.data) {
-        console.log('Setting stats to:', response.data);
         setStats(response.data);
       } else {
         console.error('Stats fetch failed:', response);

@@ -36,7 +36,7 @@ const WalletConnect: React.FC = () => {
     return networks[id] || `Chain ${id}`;
   };
 
-  const switchToSepolia = async () => {
+  const _switchToSepolia = async () => {
     try {
       if (!window.ethereum) return;
 

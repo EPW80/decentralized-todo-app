@@ -29,7 +29,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
       expect(maxUint256).to.be.gt(0);
 
       // Create a task to ensure counter works
-      await proxy.createTask("Test task");
+      await proxy.createTask("Test task", 0);
       const count = await proxy.getTotalTaskCount();
       expect(count).to.equal(1);
     });
@@ -42,7 +42,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       // Create multiple tasks rapidly
       for (let i = 0; i < 100; i++) {
-        await proxy.connect(user1).createTask(`Task ${i}`);
+        await proxy.connect(user1).createTask(`Task ${i}`, 0);
       }
 
       expect(await proxy.getTotalTaskCount()).to.equal(100);
@@ -52,7 +52,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
       // Create and delete task
-      await proxy.connect(user1).createTask("Task to delete");
+      await proxy.connect(user1).createTask("Task to delete", 0);
       await proxy.connect(user1).deleteTask(1);
 
       // Count should be 0, not underflow
@@ -73,21 +73,21 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       // Create max tasks
       for (let i = 0; i < 100; i++) {
-        await proxy.connect(user1).createTask(`Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
       }
 
       expect(await proxy.getTaskCount(user1.address)).to.equal(100);
 
       // Should fail on next attempt
       await expect(
-        proxy.connect(user1).createTask("Task 101")
+        proxy.connect(user1).createTask("Task 101", 0)
       ).to.be.revertedWith("Maximum tasks limit reached");
     });
 
     it("Should handle restore incrementing task count without overflow", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task");
+      await proxy.connect(user1).createTask("Task", 0);
       expect(await proxy.getTaskCount(user1.address)).to.equal(1);
 
       await proxy.connect(user1).deleteTask(1);
@@ -103,7 +103,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
       // This is theoretical as block.timestamp is always > 0 in practice
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task at current time");
+      await proxy.connect(user1).createTask("Task at current time", 0);
       const task = await proxy.getTask(1);
 
       expect(task.createdAt).to.be.gt(0);
@@ -115,11 +115,11 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
       // Set maximum allowed cooldown (1 hour = 3600 seconds)
       await proxy.connect(owner).updateCooldown(3600);
 
-      await proxy.connect(user1).createTask("Task 1");
+      await proxy.connect(user1).createTask("Task 1", 0);
 
       // Should be blocked immediately after
       await expect(
-        proxy.connect(user1).createTask("Task 2")
+        proxy.connect(user1).createTask("Task 2", 0)
       ).to.be.revertedWith("Rate limit: please wait before next action");
 
       // Advance time by 1 hour
@@ -127,7 +127,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       // Should work now
       await expect(
-        proxy.connect(user1).createTask("Task 2")
+        proxy.connect(user1).createTask("Task 2", 0)
       ).to.not.be.reverted;
     });
 
@@ -146,9 +146,9 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
       await proxy.connect(owner).updateCooldown(0);
 
       // Should be able to create multiple tasks immediately
-      await proxy.connect(user1).createTask("Task 1");
-      await proxy.connect(user1).createTask("Task 2");
-      await proxy.connect(user1).createTask("Task 3");
+      await proxy.connect(user1).createTask("Task 1", 0);
+      await proxy.connect(user1).createTask("Task 2", 0);
+      await proxy.connect(user1).createTask("Task 3", 0);
 
       expect(await proxy.getTaskCount(user1.address)).to.equal(3);
     });
@@ -172,7 +172,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       const description = "a".repeat(500);
       await expect(
-        proxy.connect(user1).createTask(description)
+        proxy.connect(user1).createTask(description, 0)
       ).to.not.be.reverted;
 
       const task = await proxy.getTask(1);
@@ -184,7 +184,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       const description = "a".repeat(501);
       await expect(
-        proxy.connect(user1).createTask(description)
+        proxy.connect(user1).createTask(description, 0)
       ).to.be.revertedWith("Description too long");
     });
 
@@ -192,7 +192,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
       await expect(
-        proxy.connect(user1).createTask("a")
+        proxy.connect(user1).createTask("a", 0)
       ).to.not.be.reverted;
     });
 
@@ -200,7 +200,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
       await expect(
-        proxy.connect(user1).createTask("")
+        proxy.connect(user1).createTask("", 0)
       ).to.be.revertedWith("Description cannot be empty");
     });
 
@@ -209,7 +209,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       const unicodeDescription = "Task with emoji \ud83d\ude80 and special chars: \u00e9\u00e8\u00ea\u4e2d\u6587";
       await expect(
-        proxy.connect(user1).createTask(unicodeDescription)
+        proxy.connect(user1).createTask(unicodeDescription, 0)
       ).to.not.be.reverted;
 
       const task = await proxy.getTask(1);
@@ -221,7 +221,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       const specialChars = "Task with `quotes` and 'apostrophes' and \"double quotes\" and \n newlines \t tabs";
       await expect(
-        proxy.connect(user1).createTask(specialChars)
+        proxy.connect(user1).createTask(specialChars, 0)
       ).to.not.be.reverted;
     });
   });
@@ -297,7 +297,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       // Create 50 tasks
       for (let i = 0; i < 50; i++) {
-        await proxy.connect(user1).createTask(`Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
       }
 
       const taskIds = await proxy.getUserTasks(user1.address);
@@ -314,7 +314,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       // Create and delete all tasks
       for (let i = 0; i < 5; i++) {
-        await proxy.connect(user1).createTask(`Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
       }
 
       for (let i = 1; i <= 5; i++) {
@@ -335,7 +335,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       // Create 10 tasks
       for (let i = 0; i < 10; i++) {
-        await proxy.connect(user1).createTask(`Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
       }
 
       // Delete every other task
@@ -359,7 +359,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       // Create 100 tasks (reasonable for gas testing)
       for (let i = 0; i < 100; i++) {
-        await proxy.connect(user1).createTask(`Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
       }
 
       // This should complete without running out of gas
@@ -375,7 +375,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       // Create 100 tasks
       for (let i = 0; i < 100; i++) {
-        await proxy.connect(user1).createTask(`Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
       }
 
       // Delete 50 tasks
@@ -395,9 +395,9 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
 
       // Each user creates 10 tasks
       for (let i = 0; i < 10; i++) {
-        await proxy.connect(user1).createTask(`User1 Task ${i + 1}`);
-        await proxy.connect(user2).createTask(`User2 Task ${i + 1}`);
-        await proxy.connect(user3).createTask(`User3 Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`User1 Task ${i + 1}`, 0);
+        await proxy.connect(user2).createTask(`User2 Task ${i + 1}`, 0);
+        await proxy.connect(user3).createTask(`User3 Task ${i + 1}`, 0);
       }
 
       expect(await proxy.getTaskCount(user1.address)).to.equal(10);
@@ -508,7 +508,7 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
     it("Should maintain consistent state after failed operations", async function () {
       const { proxy, user1, user2 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("User1 task");
+      await proxy.connect(user1).createTask("User1 task", 0);
       const countBefore = await proxy.getTotalTaskCount();
 
       // Attempt invalid operation
@@ -528,8 +528,8 @@ describe("TodoListV2 - Edge Cases (Gas Limits, Overflow, Boundaries)", function 
       const { proxy, user1, user2 } = await loadFixture(deployTodoListV2Fixture);
 
       // Both users create tasks simultaneously
-      const tx1 = proxy.connect(user1).createTask("User1 task");
-      const tx2 = proxy.connect(user2).createTask("User2 task");
+      const tx1 = proxy.connect(user1).createTask("User1 task", 0);
+      const tx2 = proxy.connect(user2).createTask("User2 task", 0);
 
       await Promise.all([tx1, tx2]);
 

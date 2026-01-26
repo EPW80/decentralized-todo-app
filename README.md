@@ -1,5 +1,8 @@
 # Decentralized Todo App
 
+[![CI](https://github.com/yourusername/decentralized-todo-app/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/decentralized-todo-app/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/yourusername/decentralized-todo-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/yourusername/decentralized-todo-app/actions/workflows/codeql.yml)
+
 A full-stack decentralized todo application combining blockchain technology with traditional web architecture. This project demonstrates the integration of smart contracts with a modern web application stack.
 
 ## Quick Start
@@ -222,6 +225,68 @@ npm run test:frontend
 npm run build
 ```
 
+## CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment. All workflows are located in `.github/workflows/`.
+
+### Automated Workflows
+
+#### CI Workflow
+**Runs on:** Every push to `main` and all pull requests
+
+The CI pipeline ensures code quality by running:
+- **Linting**: ESLint checks for code quality
+- **Contract Tests**: Hardhat test suite for smart contracts
+- **Backend Tests**: Jest tests with coverage reporting
+- **Frontend Tests**: Vitest tests for React components
+- **Build**: Compiles all workspaces and uploads artifacts
+
+All tests must pass before code can be merged.
+
+#### CodeQL Security Analysis
+**Runs on:** Push to `main`, pull requests, and weekly
+
+Automated security scanning for JavaScript and TypeScript code to identify potential vulnerabilities.
+
+#### Dependency Check
+**Runs on:** Weekly (Mondays at 9:00 AM UTC) and pull requests
+
+- Security audit for npm vulnerabilities
+- Checks for outdated packages
+- Reviews dependency changes in PRs
+
+#### Deploy Workflow
+**Runs on:** Manual trigger via GitHub Actions UI
+
+Allows manual deployment to:
+- **Environments**: staging or production
+- **Networks**: localhost, sepolia, or mainnet
+
+**Required secrets:**
+- `DEPLOYER_PRIVATE_KEY` - Private key for contract deployment
+- `INFURA_API_KEY` - Infura API key for network access
+- `ETHERSCAN_API_KEY` - Etherscan API key for contract verification
+
+For detailed workflow documentation, see [.github/workflows/README.md](.github/workflows/README.md).
+
+### Local Pre-Push Checks
+
+Before pushing code, run these checks locally:
+
+```bash
+# Run all tests
+npm test
+
+# Run linting
+npm run lint
+
+# Build all workspaces
+npm run build
+
+# Check for security vulnerabilities
+npm audit
+```
+
 ## Smart Contract Architecture
 
 The **TodoListV2** contract (upgradeable) provides:
@@ -363,9 +428,17 @@ The backend listens for blockchain events in real-time. However:
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+3. Make your changes and ensure all tests pass:
+   ```bash
+   npm run lint
+   npm test
+   npm run build
+   ```
+4. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+5. Push to the branch (`git push origin feature/AmazingFeature`)
+6. Open a Pull Request
+
+**Note:** All pull requests must pass the CI workflow checks (linting, tests, and build) before they can be merged. The CI pipeline will automatically run when you open or update a PR.
 
 ## License
 
@@ -387,6 +460,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [x] Test infrastructure with Jest
 - [x] Multi-chain support (Sepolia, localhost)
 - [x] Event synchronization with blockchain
+- [x] CI/CD pipeline with GitHub Actions
+- [x] Automated testing and security scanning
+- [x] Code quality enforcement
 
 ### In Progress 🚧
 - [ ] Increase test coverage to 70%
@@ -402,6 +478,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [ ] Todo categories and tags
 - [ ] Recurring tasks
 - [ ] Token rewards for task completion
+- [ ] Automated deployment to staging/production environments
 - [ ] Monitoring with Prometheus/Grafana
 - [ ] Error tracking with Sentry
 

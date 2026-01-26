@@ -44,7 +44,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
         const description = randomString(length);
 
         await expect(
-          proxy.connect(user1).createTask(description)
+          proxy.connect(user1).createTask(description, 0)
         ).to.not.be.reverted;
 
         const task = await proxy.getTask(i + 1);
@@ -63,7 +63,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
         const description = randomString(length);
 
         await expect(
-          proxy.connect(user1).createTask(description)
+          proxy.connect(user1).createTask(description, 0)
         ).to.be.revertedWith("Description too long");
       }
     });
@@ -89,7 +89,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
       for (const description of specialStrings) {
         if (description.length <= 500) {
           await expect(
-            proxy.connect(user1).createTask(description)
+            proxy.connect(user1).createTask(description, 0)
           ).to.not.be.reverted;
         }
       }
@@ -118,7 +118,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
 
       // User1 creates tasks
       for (let i = 0; i < 5; i++) {
-        await proxy.connect(user1).createTask(`User1 Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`User1 Task ${i + 1}`, 0);
       }
 
       // Random users try to modify user1's tasks
@@ -170,11 +170,11 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
         // Advance time to clear any previous cooldown
         await time.increase(cooldown + 1);
 
-        await proxy.connect(user1).createTask(`Task with ${cooldown}s cooldown`);
+        await proxy.connect(user1).createTask(`Task with ${cooldown}s cooldown`, 0);
 
         // Should be rate limited
         await expect(
-          proxy.connect(user1).createTask("Should fail")
+          proxy.connect(user1).createTask("Should fail", 0)
         ).to.be.revertedWith("Rate limit: please wait before next action");
 
         // Advance time past cooldown for next iteration
@@ -191,7 +191,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
       const count = randomInt(10, 50);
 
       for (let i = 0; i < count; i++) {
-        await proxy.connect(user1).createTask(`Rapid task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Rapid task ${i + 1}`, 0);
       }
 
       expect(await proxy.getTaskCount(user1.address)).to.equal(count);
@@ -262,7 +262,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
         try {
           if (op === "create") {
             const description = randomString(randomInt(1, 100));
-            await proxy.connect(user1).createTask(description);
+            await proxy.connect(user1).createTask(description, 0);
             taskIds.push(i + 1);
           } else if (taskIds.length > 0) {
             const taskId = taskIds[randomInt(0, taskIds.length - 1)];
@@ -294,7 +294,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
 
       // Create a few tasks
       for (let i = 0; i < 10; i++) {
-        await proxy.connect(user1).createTask(`Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
       }
 
       // Try random task IDs
@@ -353,7 +353,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
 
             // Operations should be blocked
             await expect(
-              proxy.connect(user1).createTask("Should fail")
+              proxy.connect(user1).createTask("Should fail", 0)
             ).to.be.revertedWith("Circuit breaker active: contract operations suspended");
           }
         } else {
@@ -382,7 +382,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
         const user = users[randomInt(0, users.length - 1)];
         const description = randomString(randomInt(1, 200));
 
-        await proxy.connect(user).createTask(description);
+        await proxy.connect(user).createTask(description, 0);
         taskCounts[user.address]++;
       }
 
@@ -408,7 +408,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
       for (const user of users) {
         const taskCount = randomInt(5, 15);
         for (let i = 0; i < taskCount; i++) {
-          await proxy.connect(user).createTask(`Task ${i + 1}`);
+          await proxy.connect(user).createTask(`Task ${i + 1}`, 0);
         }
       }
 
@@ -447,7 +447,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
 
             // Operations should fail
             await expect(
-              proxy.connect(user1).createTask("Should fail")
+              proxy.connect(user1).createTask("Should fail", 0)
             ).to.be.revertedWithCustomError(proxy, "EnforcedPause");
           }
         } else {
@@ -472,7 +472,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
 
       for (const size of sizes) {
         const description = randomString(size);
-        const tx = await proxy.connect(user1).createTask(description);
+        const tx = await proxy.connect(user1).createTask(description, 0);
         const receipt = await tx.wait();
 
         // Gas should be reasonable (less than 1M for complex operations)
@@ -490,7 +490,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
       for (const size of sizes) {
         // Create tasks
         for (let i = 0; i < size; i++) {
-          await proxy.connect(user1).createTask(`Task ${i + 1}`);
+          await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
         }
 
         // Should be able to retrieve all tasks
@@ -524,7 +524,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
 
         if (op === 0) {
           // Create task
-          await proxy.connect(user).createTask(randomString(randomInt(1, 100)));
+          await proxy.connect(user).createTask(randomString(randomInt(1, 100)), 0);
         } else {
           // Try to delete a task
           const userTasks = await proxy.getUserTasks(user.address);
@@ -558,8 +558,8 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
 
       // Create tasks for both users
       for (let i = 0; i < 10; i++) {
-        await proxy.connect(user1).createTask(`User1 Task ${i + 1}`);
-        await proxy.connect(user2).createTask(`User2 Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`User1 Task ${i + 1}`, 0);
+        await proxy.connect(user2).createTask(`User2 Task ${i + 1}`, 0);
       }
 
       // Get all user1 tasks
@@ -588,7 +588,7 @@ describe("TodoListV2 - Fuzz Testing for Security Vulnerabilities", function () {
 
         try {
           if (op === 0) {
-            await proxy.connect(user1).createTask(randomString(randomInt(1, 500)));
+            await proxy.connect(user1).createTask(randomString(randomInt(1, 500)), 0);
           } else {
             const tasks = await proxy.getUserTasks(user1.address);
             if (tasks.length > 0) {

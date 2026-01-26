@@ -100,9 +100,9 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
       const { proxy, user1, user2, TodoListV2 } = await loadFixture(deployTodoListV2Fixture);
 
       // Create multiple tasks with different users
-      await proxy.connect(user1).createTask("User1 Task 1");
-      await proxy.connect(user1).createTask("User1 Task 2");
-      await proxy.connect(user2).createTask("User2 Task 1");
+      await proxy.connect(user1).createTask("User1 Task 1", 0);
+      await proxy.connect(user1).createTask("User1 Task 2", 0);
+      await proxy.connect(user2).createTask("User2 Task 1", 0);
 
       const taskCountBefore = await proxy.getTotalTaskCount();
       const user1TasksBefore = await proxy.getUserTasks(user1.address);
@@ -224,7 +224,7 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
 
       // Create task after upgrade
       await expect(
-        upgraded.connect(user1).createTask("Post-upgrade task")
+        upgraded.connect(user1).createTask("Post-upgrade task", 0)
       ).to.not.be.reverted;
 
       const task = await upgraded.getTask(1);
@@ -235,7 +235,7 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
       const { proxy, user1, TodoListV2 } = await loadFixture(deployTodoListV2Fixture);
 
       // Create task before upgrade
-      await proxy.connect(user1).createTask("Pre-upgrade task");
+      await proxy.connect(user1).createTask("Pre-upgrade task", 0);
 
       // Upgrade
       const TodoListV2Upgraded = await ethers.getContractFactory("TodoListV2");
@@ -279,7 +279,7 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
       const { proxy, user1, TodoListV2 } = await loadFixture(deployTodoListV2Fixture);
 
       // Create initial task
-      await proxy.connect(user1).createTask("Task 1");
+      await proxy.connect(user1).createTask("Task 1", 0);
 
       // First upgrade
       const TodoListV2Upgraded1 = await ethers.getContractFactory("TodoListV2");
@@ -289,7 +289,7 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
       );
 
       // Create task after first upgrade
-      await upgraded1.connect(user1).createTask("Task 2");
+      await upgraded1.connect(user1).createTask("Task 2", 0);
 
       // Second upgrade
       const TodoListV2Upgraded2 = await ethers.getContractFactory("TodoListV2");
@@ -310,7 +310,7 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
       const { proxy, TodoListV2 } = await loadFixture(deployTodoListV2Fixture);
 
       // Initial version
-      expect(await proxy.version()).to.equal("2.0.0");
+      expect(await proxy.version()).to.equal("2.1.0");
 
       // Upgrade (in this case to same version, but process is tested)
       const TodoListV2Upgraded = await ethers.getContractFactory("TodoListV2");
@@ -320,7 +320,7 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
       );
 
       // Version should remain (or could be updated in a real upgrade)
-      expect(await upgraded.version()).to.equal("2.0.0");
+      expect(await upgraded.version()).to.equal("2.1.0");
     });
   });
 
@@ -329,8 +329,8 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
       const { proxy, user1, user2, TodoListV2 } = await loadFixture(deployTodoListV2Fixture);
 
       // Multiple users with tasks
-      await proxy.connect(user1).createTask("User1 active task");
-      await proxy.connect(user2).createTask("User2 active task");
+      await proxy.connect(user1).createTask("User1 active task", 0);
+      await proxy.connect(user2).createTask("User2 active task", 0);
 
       // Upgrade with active state
       const TodoListV2Upgraded = await ethers.getContractFactory("TodoListV2");
@@ -341,11 +341,11 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
 
       // Both users should still be able to interact
       await expect(
-        upgraded.connect(user1).createTask("User1 post-upgrade")
+        upgraded.connect(user1).createTask("User1 post-upgrade", 0)
       ).to.not.be.reverted;
 
       await expect(
-        upgraded.connect(user2).createTask("User2 post-upgrade")
+        upgraded.connect(user2).createTask("User2 post-upgrade", 0)
       ).to.not.be.reverted;
     });
 
@@ -353,8 +353,8 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
       const { proxy, user1, TodoListV2 } = await loadFixture(deployTodoListV2Fixture);
 
       // Create some tasks
-      await proxy.connect(user1).createTask("Task 1");
-      await proxy.connect(user1).createTask("Task 2");
+      await proxy.connect(user1).createTask("Task 1", 0);
+      await proxy.connect(user1).createTask("Task 2", 0);
       const countBefore = await proxy.getTotalTaskCount();
 
       // Upgrade
@@ -365,7 +365,7 @@ describe("TodoListV2 - Upgrade Mechanism Tests", function () {
       );
 
       // Create new task - should get next ID
-      await upgraded.connect(user1).createTask("Task 3");
+      await upgraded.connect(user1).createTask("Task 3", 0);
       const countAfter = await upgraded.getTotalTaskCount();
 
       expect(countAfter).to.equal(countBefore + BigInt(1));

@@ -94,7 +94,7 @@ const TrustScore: React.FC<TrustScoreProps> = ({
   requiredConfirmations = 1,
   variant = 'default',
 }) => {
-  const networkTheme = useNetworkTheme();
+  const _networkTheme = useNetworkTheme();
   const trust = calculateTrustScore(transactionCount, confirmations, requiredConfirmations);
 
   // Compact variant - just a badge

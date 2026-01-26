@@ -1,6 +1,6 @@
 const logger = require('../utils/logger');
 
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   // Log full error internally (for debugging)
   if (process.env.NODE_ENV === 'development') {
     logger.error("Error:", { error: err.message, stack: err.stack });

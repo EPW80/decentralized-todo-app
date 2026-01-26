@@ -53,6 +53,11 @@ const todoSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    dueDate: {
+      type: Date,
+      default: null,
+      index: true, // Index for filtering by due date
+    },
 
     // Sync status
     syncStatus: {
@@ -92,6 +97,9 @@ todoSchema.index({ blockchainCreatedAt: -1 });
 // Compound index for user-specific time queries (most common query pattern)
 todoSchema.index({ owner: 1, blockchainCreatedAt: -1 });
 
+// Compound index for due date queries (overdue tasks, upcoming tasks)
+todoSchema.index({ owner: 1, dueDate: 1, completed: 1, deleted: 1 });
+
 // Index for monitoring sync health and retry logic
 todoSchema.index({ syncStatus: 1, lastSyncedAt: 1 });
 
@@ -124,6 +132,12 @@ todoSchema.methods.markAsRestored = function () {
   this.deleted = false;
   this.deletedAt = null;
   this.syncStatus = "synced";
+  this.lastSyncedAt = new Date();
+  return this.save();
+};
+
+todoSchema.methods.updateDescription = function (newDescription) {
+  this.description = newDescription;
   this.lastSyncedAt = new Date();
   return this.save();
 };

@@ -362,7 +362,7 @@ describe("TodoListV2 - Access Control with Multiple Roles", function () {
       const ADMIN_ROLE = await proxy.ADMIN_ROLE();
 
       // User creates tasks
-      await proxy.connect(user1).createTask("Task 1");
+      await proxy.connect(user1).createTask("Task 1", 0);
 
       // Grant admin role to admin1
       await proxy.connect(owner).grantRoleWithEvent(ADMIN_ROLE, admin1.address);
@@ -383,7 +383,7 @@ describe("TodoListV2 - Access Control with Multiple Roles", function () {
 
       // User can still create tasks
       await expect(
-        proxy.connect(user1).createTask("Task 2")
+        proxy.connect(user1).createTask("Task 2", 0)
       ).to.not.be.reverted;
     });
 
@@ -400,7 +400,7 @@ describe("TodoListV2 - Access Control with Multiple Roles", function () {
 
       // Operations should be blocked
       await expect(
-        proxy.connect(user1).createTask("Emergency task")
+        proxy.connect(user1).createTask("Emergency task", 0)
       ).to.be.revertedWith("Circuit breaker active: contract operations suspended");
 
       // Admin2 deactivates after emergency is resolved
@@ -408,7 +408,7 @@ describe("TodoListV2 - Access Control with Multiple Roles", function () {
 
       // Operations should work again
       await expect(
-        proxy.connect(user1).createTask("Post-emergency task")
+        proxy.connect(user1).createTask("Post-emergency task", 0)
       ).to.not.be.reverted;
     });
   });

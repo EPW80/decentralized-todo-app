@@ -26,7 +26,7 @@ describe("TodoListV2", function () {
 
     it("Should initialize with correct version", async function () {
       const { proxy } = await loadFixture(deployTodoListV2Fixture);
-      expect(await proxy.version()).to.equal("2.0.0");
+      expect(await proxy.version()).to.equal("2.1.0");
     });
 
     it("Should grant all roles to initial admin", async function () {
@@ -179,7 +179,7 @@ describe("TodoListV2", function () {
       await proxy.connect(owner).pause();
 
       await expect(
-        proxy.connect(user1).createTask("Test task")
+        proxy.connect(user1).createTask("Test task", 0)
       ).to.be.revertedWithCustomError(proxy, "EnforcedPause");
     });
 
@@ -244,7 +244,7 @@ describe("TodoListV2", function () {
       await proxy.connect(owner).activateCircuitBreaker();
 
       await expect(
-        proxy.connect(user1).createTask("Test task")
+        proxy.connect(user1).createTask("Test task", 0)
       ).to.be.revertedWith("Circuit breaker active: contract operations suspended");
     });
 
@@ -282,34 +282,34 @@ describe("TodoListV2", function () {
       // Set cooldown to 10 seconds to ensure it triggers
       await proxy.connect(owner).updateCooldown(10);
 
-      await proxy.connect(user1).createTask("Task 1");
+      await proxy.connect(user1).createTask("Task 1", 0);
 
       await expect(
-        proxy.connect(user1).createTask("Task 2")
+        proxy.connect(user1).createTask("Task 2", 0)
       ).to.be.revertedWith("Rate limit: please wait before next action");
     });
 
     it("Should allow task creation after cooldown period", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task 1");
+      await proxy.connect(user1).createTask("Task 1", 0);
 
       // Advance time by 2 seconds (cooldown is 1 second)
       await time.increase(2);
 
       await expect(
-        proxy.connect(user1).createTask("Task 2")
+        proxy.connect(user1).createTask("Task 2", 0)
       ).to.not.be.reverted;
     });
 
     it("Should enforce rate limiting independently for different users", async function () {
       const { proxy, user1, user2 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("User1 Task");
+      await proxy.connect(user1).createTask("User1 Task", 0);
 
       // user2 should be able to create immediately
       await expect(
-        proxy.connect(user2).createTask("User2 Task")
+        proxy.connect(user2).createTask("User2 Task", 0)
       ).to.not.be.reverted;
     });
 
@@ -355,13 +355,13 @@ describe("TodoListV2", function () {
 
       // Create 100 tasks
       for (let i = 0; i < 100; i++) {
-        await proxy.connect(user1).createTask(`Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
         if (i < 99) await time.increase(2); // Skip time increase on last iteration
       }
 
       await time.increase(2);
       await expect(
-        proxy.connect(user1).createTask("Task 101")
+        proxy.connect(user1).createTask("Task 101", 0)
       ).to.be.revertedWith("Maximum tasks limit reached");
     });
 
@@ -373,7 +373,7 @@ describe("TodoListV2", function () {
 
       // Create 100 tasks
       for (let i = 0; i < 100; i++) {
-        await proxy.connect(user1).createTask(`Task ${i + 1}`);
+        await proxy.connect(user1).createTask(`Task ${i + 1}`, 0);
         if (i < 99) await time.increase(2);
       }
 
@@ -384,7 +384,7 @@ describe("TodoListV2", function () {
 
       // Should now be able to create another
       await expect(
-        proxy.connect(user1).createTask("Task 101")
+        proxy.connect(user1).createTask("Task 101", 0)
       ).to.not.be.reverted;
     });
 
@@ -424,7 +424,7 @@ describe("TodoListV2", function () {
     it("Should create a task successfully", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      const tx = await proxy.connect(user1).createTask("Buy groceries");
+      const tx = await proxy.connect(user1).createTask("Buy groceries", 0);
       await tx.wait();
 
       const taskCount = await proxy.getTaskCount(user1.address);
@@ -434,15 +434,15 @@ describe("TodoListV2", function () {
     it("Should emit TaskCreated event", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await expect(proxy.connect(user1).createTask("Test task"))
+      await expect(proxy.connect(user1).createTask("Test task", 0))
         .to.emit(proxy, "TaskCreated")
-        .withArgs(1, user1.address, "Test task", await time.latest() + 1);
+        .withArgs(1, user1.address, "Test task", await time.latest() + 1, 0);
     });
 
     it("Should store task with correct properties including deleted flag", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Complete project");
+      await proxy.connect(user1).createTask("Complete project", 0);
       const task = await proxy.getTask(1);
 
       expect(task.id).to.equal(1);
@@ -459,7 +459,7 @@ describe("TodoListV2", function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
       await expect(
-        proxy.connect(user1).createTask("")
+        proxy.connect(user1).createTask("", 0)
       ).to.be.revertedWith("Description cannot be empty");
     });
 
@@ -468,7 +468,7 @@ describe("TodoListV2", function () {
 
       const longDescription = "a".repeat(501);
       await expect(
-        proxy.connect(user1).createTask(longDescription)
+        proxy.connect(user1).createTask(longDescription, 0)
       ).to.be.revertedWith("Description too long");
     });
   });
@@ -477,7 +477,7 @@ describe("TodoListV2", function () {
     it("Should soft delete a task", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task to delete");
+      await proxy.connect(user1).createTask("Task to delete", 0);
       await time.increase(2);
       await proxy.connect(user1).deleteTask(1);
 
@@ -489,7 +489,7 @@ describe("TodoListV2", function () {
     it("Should emit TaskDeleted event", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task to delete");
+      await proxy.connect(user1).createTask("Task to delete", 0);
       await time.increase(2);
 
       await expect(proxy.connect(user1).deleteTask(1))
@@ -500,7 +500,7 @@ describe("TodoListV2", function () {
     it("Should restore a deleted task", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task to restore");
+      await proxy.connect(user1).createTask("Task to restore", 0);
       await time.increase(2);
       await proxy.connect(user1).deleteTask(1);
       await time.increase(2);
@@ -514,7 +514,7 @@ describe("TodoListV2", function () {
     it("Should emit TaskRestored event", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task to restore");
+      await proxy.connect(user1).createTask("Task to restore", 0);
       await time.increase(2);
       await proxy.connect(user1).deleteTask(1);
       await time.increase(2);
@@ -527,7 +527,7 @@ describe("TodoListV2", function () {
     it("Should not allow restoring non-deleted task", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Active task");
+      await proxy.connect(user1).createTask("Active task", 0);
 
       await expect(
         proxy.connect(user1).restoreTask(1)
@@ -537,7 +537,7 @@ describe("TodoListV2", function () {
     it("Should not allow completing deleted task", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task");
+      await proxy.connect(user1).createTask("Task", 0);
       await time.increase(2);
       await proxy.connect(user1).deleteTask(1);
       await time.increase(2);
@@ -550,7 +550,7 @@ describe("TodoListV2", function () {
     it("Should decrement task count when deleting", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task");
+      await proxy.connect(user1).createTask("Task", 0);
       expect(await proxy.getTaskCount(user1.address)).to.equal(1);
 
       await time.increase(2);
@@ -561,7 +561,7 @@ describe("TodoListV2", function () {
     it("Should increment task count when restoring", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task");
+      await proxy.connect(user1).createTask("Task", 0);
       await time.increase(2);
       await proxy.connect(user1).deleteTask(1);
       await time.increase(2);
@@ -575,7 +575,7 @@ describe("TodoListV2", function () {
     it("Should complete a task successfully", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task to complete");
+      await proxy.connect(user1).createTask("Task to complete", 0);
       await time.increase(2);
       await proxy.connect(user1).completeTask(1);
 
@@ -587,7 +587,7 @@ describe("TodoListV2", function () {
     it("Should emit TaskCompleted event", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task to complete");
+      await proxy.connect(user1).createTask("Task to complete", 0);
       await time.increase(2);
 
       await expect(proxy.connect(user1).completeTask(1))
@@ -598,7 +598,7 @@ describe("TodoListV2", function () {
     it("Should not allow completing already completed task", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task");
+      await proxy.connect(user1).createTask("Task", 0);
       await time.increase(2);
       await proxy.connect(user1).completeTask(1);
       await time.increase(2);
@@ -611,7 +611,7 @@ describe("TodoListV2", function () {
     it("Should not allow non-owner to complete task", async function () {
       const { proxy, user1, user2 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("User1 task");
+      await proxy.connect(user1).createTask("User1 task", 0);
 
       await expect(
         proxy.connect(user2).completeTask(1)
@@ -623,9 +623,9 @@ describe("TodoListV2", function () {
     it("Should get user task details with includeDeleted flag", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task 1");
+      await proxy.connect(user1).createTask("Task 1", 0);
       await time.increase(2);
-      await proxy.connect(user1).createTask("Task 2");
+      await proxy.connect(user1).createTask("Task 2", 0);
       await time.increase(2);
       await proxy.connect(user1).deleteTask(1);
 
@@ -640,7 +640,7 @@ describe("TodoListV2", function () {
     it("Should check if task is completed", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task");
+      await proxy.connect(user1).createTask("Task", 0);
       expect(await proxy.isTaskCompleted(1)).to.be.false;
 
       await time.increase(2);
@@ -651,7 +651,7 @@ describe("TodoListV2", function () {
     it("Should check if task is deleted", async function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("Task");
+      await proxy.connect(user1).createTask("Task", 0);
       expect(await proxy.isTaskDeleted(1)).to.be.false;
 
       await time.increase(2);
@@ -767,7 +767,7 @@ describe("TodoListV2", function () {
       const { proxy, owner, user1, TodoListV2 } = await loadFixture(deployTodoListV2Fixture);
 
       // Create some tasks
-      await proxy.connect(user1).createTask("Task before upgrade");
+      await proxy.connect(user1).createTask("Task before upgrade", 0);
       const taskCountBefore = await proxy.getTotalTaskCount();
 
       // Upgrade
@@ -800,7 +800,7 @@ describe("TodoListV2", function () {
       const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
 
       // Create
-      await proxy.connect(user1).createTask("Complex workflow task");
+      await proxy.connect(user1).createTask("Complex workflow task", 0);
       let task = await proxy.getTask(1);
       expect(task.completed).to.be.false;
       expect(task.deleted).to.be.false;
@@ -828,8 +828,8 @@ describe("TodoListV2", function () {
     it("Should maintain isolation between users", async function () {
       const { proxy, user1, user2 } = await loadFixture(deployTodoListV2Fixture);
 
-      await proxy.connect(user1).createTask("User1 task");
-      await proxy.connect(user2).createTask("User2 task");
+      await proxy.connect(user1).createTask("User1 task", 0);
+      await proxy.connect(user2).createTask("User2 task", 0);
 
       expect(await proxy.getTaskCount(user1.address)).to.equal(1);
       expect(await proxy.getTaskCount(user2.address)).to.equal(1);
@@ -849,7 +849,7 @@ describe("TodoListV2", function () {
 
       // Should be blocked by pause first
       await expect(
-        proxy.connect(user1).createTask("Task")
+        proxy.connect(user1).createTask("Task", 0)
       ).to.be.revertedWithCustomError(proxy, "EnforcedPause");
 
       // Unpause but keep circuit breaker
@@ -857,7 +857,7 @@ describe("TodoListV2", function () {
 
       // Should now be blocked by circuit breaker
       await expect(
-        proxy.connect(user1).createTask("Task")
+        proxy.connect(user1).createTask("Task", 0)
       ).to.be.revertedWith("Circuit breaker active: contract operations suspended");
 
       // Deactivate circuit breaker
@@ -865,7 +865,7 @@ describe("TodoListV2", function () {
 
       // Should now work
       await expect(
-        proxy.connect(user1).createTask("Task")
+        proxy.connect(user1).createTask("Task", 0)
       ).to.not.be.reverted;
     });
   });
@@ -876,7 +876,7 @@ describe("TodoListV2", function () {
 
       const maxDescription = "a".repeat(500);
       await expect(
-        proxy.connect(user1).createTask(maxDescription)
+        proxy.connect(user1).createTask(maxDescription, 0)
       ).to.not.be.reverted;
     });
 
@@ -889,7 +889,7 @@ describe("TodoListV2", function () {
 
       // Create multiple tasks
       for (let i = 0; i < 10; i++) {
-        await proxy.connect(user1).createTask(`Task ${i}`);
+        await proxy.connect(user1).createTask(`Task ${i}`, 0);
       }
 
       expect(await proxy.getTaskCount(user1.address)).to.equal(10);
@@ -909,6 +909,129 @@ describe("TodoListV2", function () {
 
       const balance = await ethers.provider.getBalance(await proxy.getAddress());
       expect(balance).to.equal(ethers.parseEther("1.0"));
+    });
+  });
+
+  describe("Due Date Functionality", function () {
+    it("Should create task with due date", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      const futureDate = (await time.latest()) + 86400; // 1 day in future
+      await proxy.connect(user1).createTask("Task with due date", futureDate);
+
+      const task = await proxy.getTask(1);
+      expect(task.dueDate).to.equal(futureDate);
+    });
+
+    it("Should create task without due date (dueDate = 0)", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      await proxy.connect(user1).createTask("Task without due date", 0);
+
+      const task = await proxy.getTask(1);
+      expect(task.dueDate).to.equal(0);
+    });
+
+    it("Should reject due date in the past", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      const pastDate = (await time.latest()) - 86400; // 1 day in past
+
+      await expect(
+        proxy.connect(user1).createTask("Task with past due date", pastDate)
+      ).to.be.revertedWith("Due date must be in the future");
+    });
+
+    it("Should emit TaskCreated event with due date", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      const futureDate = (await time.latest()) + 86400;
+      const currentTime = await time.latest();
+
+      await expect(proxy.connect(user1).createTask("Task", futureDate))
+        .to.emit(proxy, "TaskCreated")
+        .withArgs(1, user1.address, "Task", currentTime + 1, futureDate);
+    });
+  });
+
+  describe("Update Task Functionality", function () {
+    it("Should update task description", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      await proxy.connect(user1).createTask("Original description", 0);
+      await time.increase(2);
+
+      await proxy.connect(user1).updateTask(1, "Updated description");
+
+      const task = await proxy.getTask(1);
+      expect(task.description).to.equal("Updated description");
+    });
+
+    it("Should emit TaskUpdated event", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      await proxy.connect(user1).createTask("Original", 0);
+      await time.increase(2);
+      const currentTime = await time.latest();
+
+      await expect(proxy.connect(user1).updateTask(1, "Updated"))
+        .to.emit(proxy, "TaskUpdated")
+        .withArgs(1, user1.address, "Original", "Updated", currentTime + 1);
+    });
+
+    it("Should not allow empty description update", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      await proxy.connect(user1).createTask("Original", 0);
+      await time.increase(2);
+
+      await expect(
+        proxy.connect(user1).updateTask(1, "")
+      ).to.be.revertedWith("Description cannot be empty");
+    });
+
+    it("Should not allow description longer than 500 characters", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      await proxy.connect(user1).createTask("Original", 0);
+      await time.increase(2);
+
+      const longDescription = "a".repeat(501);
+      await expect(
+        proxy.connect(user1).updateTask(1, longDescription)
+      ).to.be.revertedWith("Description too long");
+    });
+
+    it("Should not allow non-owner to update task", async function () {
+      const { proxy, user1, user2 } = await loadFixture(deployTodoListV2Fixture);
+
+      await proxy.connect(user1).createTask("Original", 0);
+      await time.increase(2);
+
+      await expect(
+        proxy.connect(user2).updateTask(1, "Hacked")
+      ).to.be.revertedWith("Not task owner");
+    });
+
+    it("Should not allow updating deleted task", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      await proxy.connect(user1).createTask("Original", 0);
+      await time.increase(2);
+      await proxy.connect(user1).deleteTask(1);
+      await time.increase(2);
+
+      await expect(
+        proxy.connect(user1).updateTask(1, "Updated")
+      ).to.be.revertedWith("Task has been deleted");
+    });
+
+    it("Should not allow updating non-existent task", async function () {
+      const { proxy, user1 } = await loadFixture(deployTodoListV2Fixture);
+
+      await expect(
+        proxy.connect(user1).updateTask(999, "Updated")
+      ).to.be.revertedWith("Task does not exist");
     });
   });
 });

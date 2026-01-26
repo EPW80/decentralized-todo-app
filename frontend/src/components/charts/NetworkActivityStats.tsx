@@ -28,7 +28,7 @@ const NetworkActivityStats: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-    let blockSubscription: any = null;
+    const blockSubscription: (() => void) | null = null;
 
     const fetchNetworkStats = async () => {
       if (!provider || !isConnected) {

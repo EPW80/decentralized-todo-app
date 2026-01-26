@@ -435,7 +435,8 @@ class BlockchainService {
       'TaskCreated',
       'TaskCompleted',
       'TaskDeleted',
-      'TaskRestored'
+      'TaskRestored',
+      'TaskUpdated'
     ];
 
     const missingEvents = [];
@@ -692,6 +693,7 @@ class BlockchainService {
       if (handlers.taskCompleted) contract.off('TaskCompleted', handlers.taskCompleted);
       if (handlers.taskDeleted) contract.off('TaskDeleted', handlers.taskDeleted);
       if (handlers.taskRestored) contract.off('TaskRestored', handlers.taskRestored);
+      if (handlers.taskUpdated) contract.off('TaskUpdated', handlers.taskUpdated);
 
       // Remove provider handlers
       if (handlers.providerError) provider.off('error', handlers.providerError);
@@ -761,16 +763,17 @@ class BlockchainService {
       },
 
       // TaskCreated event handler
-      taskCreated: async (taskId, owner, description, timestamp, event) => {
+      taskCreated: async (taskId, owner, description, timestamp, dueDate, event) => {
         try {
           logger.info(`[${chainId}] TaskCreated event:`, {
             taskId: taskId.toString(),
             owner,
             description,
+            dueDate: dueDate ? new Date(Number(dueDate) * 1000).toISOString() : null,
             blockNumber: event.log.blockNumber,
           });
 
-          await this.syncTaskCreated(chainId, taskId, owner, description, timestamp, event.log.transactionHash);
+          await this.syncTaskCreated(chainId, taskId, owner, description, timestamp, event.log.transactionHash, dueDate);
         } catch (error) {
           logger.error(`Error handling TaskCreated event:`, { error: error.message, stack: error.stack });
         }
@@ -817,6 +820,22 @@ class BlockchainService {
         } catch (error) {
           logger.error(`Error handling TaskRestored event:`, { error: error.message, stack: error.stack });
         }
+      },
+
+      // TaskUpdated event handler
+      taskUpdated: async (taskId, owner, oldDescription, newDescription, timestamp, event) => {
+        try {
+          logger.info(`[${chainId}] TaskUpdated event:`, {
+            taskId: taskId.toString(),
+            oldDescription,
+            newDescription,
+            blockNumber: event.log.blockNumber,
+          });
+
+          await this.syncTaskUpdated(chainId, taskId, oldDescription, newDescription);
+        } catch (error) {
+          logger.error(`Error handling TaskUpdated event:`, { error: error.message, stack: error.stack });
+        }
       }
     };
 
@@ -859,6 +878,7 @@ class BlockchainService {
       contract.on('TaskCompleted', wrapHandler(handlers.taskCompleted, 'TaskCompleted'));
       contract.on('TaskDeleted', wrapHandler(handlers.taskDeleted, 'TaskDeleted'));
       contract.on('TaskRestored', wrapHandler(handlers.taskRestored, 'TaskRestored'));
+      contract.on('TaskUpdated', wrapHandler(handlers.taskUpdated, 'TaskUpdated'));
 
       logger.info(`✓ Event listeners started for chainId: ${chainId}`);
     } catch (error) {
@@ -870,7 +890,7 @@ class BlockchainService {
     }
   }
 
-  async syncTaskCreated(chainId, taskId, owner, description, timestamp, transactionHash) {
+  async syncTaskCreated(chainId, taskId, owner, description, timestamp, transactionHash, dueDate) {
     try {
       const blockchainId = taskId.toString();
       logger.info(`[DEBUG] Attempting to sync TaskCreated: ${blockchainId} on chain ${chainId}`);
@@ -892,6 +912,7 @@ class BlockchainService {
         description,
         completed: false,
         blockchainCreatedAt: new Date(Number(timestamp) * 1000),
+        dueDate: dueDate ? new Date(Number(dueDate) * 1000) : null,
         syncStatus: 'synced',
       });
 
@@ -963,6 +984,23 @@ class BlockchainService {
       logger.info(`✓ Synced TaskRestored: ${blockchainId} on chain ${chainId}`);
     } catch (error) {
       logger.error('Error syncing TaskRestored:', { error: error.message, stack: error.stack });
+    }
+  }
+
+  async syncTaskUpdated(chainId, taskId, oldDescription, newDescription) {
+    try {
+      const blockchainId = taskId.toString();
+      const todo = await Todo.findByBlockchainId(chainId, blockchainId);
+
+      if (!todo) {
+        logger.error(`Todo ${blockchainId} not found for update on chain ${chainId}`);
+        return;
+      }
+
+      await todo.updateDescription(newDescription);
+      logger.info(`✓ Synced TaskUpdated: ${blockchainId} on chain ${chainId}`);
+    } catch (error) {
+      logger.error('Error syncing TaskUpdated:', { error: error.message, stack: error.stack });
     }
   }
 
@@ -1239,18 +1277,21 @@ class BlockchainService {
       // Get TaskRestored events
       const restoredEvents = await contract.queryFilter(filter.TaskRestored(), fromBlock, currentBlock);
 
+      // Get TaskUpdated events
+      const updatedEvents = await contract.queryFilter(filter.TaskUpdated(), fromBlock, currentBlock);
+
       logger.info(
-        `Found ${createdEvents.length} created, ${completedEvents.length} completed, ${deletedEvents.length} deleted, ${restoredEvents.length} restored events to resync`
+        `Found ${createdEvents.length} created, ${completedEvents.length} completed, ${deletedEvents.length} deleted, ${restoredEvents.length} restored, ${updatedEvents.length} updated events to resync`
       );
 
       // Process events in order
       for (const event of createdEvents) {
-        const [taskId, owner, description, timestamp] = event.args;
-        await this.syncTaskCreated(chainId, taskId, owner, description, timestamp, event.transactionHash);
+        const [taskId, owner, description, timestamp, dueDate] = event.args;
+        await this.syncTaskCreated(chainId, taskId, owner, description, timestamp, event.transactionHash, dueDate);
       }
 
       for (const event of completedEvents) {
-        const [taskId, owner, timestamp] = event.args;
+        const [taskId, _owner, timestamp] = event.args;
         await this.syncTaskCompleted(chainId, taskId, timestamp);
       }
 
@@ -1262,6 +1303,11 @@ class BlockchainService {
       for (const event of restoredEvents) {
         const [taskId] = event.args;
         await this.syncTaskRestored(chainId, taskId);
+      }
+
+      for (const event of updatedEvents) {
+        const [taskId, _owner, oldDescription, newDescription] = event.args;
+        await this.syncTaskUpdated(chainId, taskId, oldDescription, newDescription);
       }
 
       logger.info(`✓ Resync completed for chain ${chainId}`);
