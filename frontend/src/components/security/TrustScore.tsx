@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNetworkTheme } from '../../hooks/useNetworkTheme';
 
 interface TrustScoreProps {
   address?: string;
@@ -94,7 +93,6 @@ const TrustScore: React.FC<TrustScoreProps> = ({
   requiredConfirmations = 1,
   variant = 'default',
 }) => {
-  const _networkTheme = useNetworkTheme();
   const trust = calculateTrustScore(transactionCount, confirmations, requiredConfirmations);
 
   // Compact variant - just a badge

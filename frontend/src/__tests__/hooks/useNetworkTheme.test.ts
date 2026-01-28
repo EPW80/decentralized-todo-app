@@ -18,7 +18,7 @@ vi.mock('../../config/networkThemes', () => ({
     glowColor: 'rgba(102, 126, 234, 0.5)',
     name: chainId === 1 ? 'Ethereum Mainnet' : 'Localhost',
   })),
-  hexToRgb: vi.fn((hex: string) => {
+  hexToRgb: vi.fn((_hex: string) => {
     // Simple hex to RGB conversion for testing
     return '102, 126, 234';
   }),

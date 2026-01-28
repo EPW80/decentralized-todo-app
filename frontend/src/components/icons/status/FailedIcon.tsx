@@ -1,5 +1,5 @@
 import React from 'react';
-import IconWrapper, { IconProps } from '../IconWrapper';
+import IconWrapper, { type IconProps } from '../IconWrapper';
 
 const FailedIcon: React.FC<IconProps> = (props) => {
   return (

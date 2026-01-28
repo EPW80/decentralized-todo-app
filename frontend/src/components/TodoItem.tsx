@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { blockchainService } from '../services/blockchain';
 import { HexagonPattern, DigitalGrid, BlockchainBorder } from './patterns';
-import { useNetworkTheme } from '../hooks/useNetworkTheme';
 import { getNetworkTheme } from '../config/networkThemes';
 import Tooltip from './Tooltip';
 import CopyButton from './CopyButton';
@@ -29,7 +28,6 @@ const TodoItem: React.FC<TodoItemProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editDescription, setEditDescription] = useState(todo.description);
   const editInputRef = useRef<HTMLInputElement>(null);
-  const _currentNetworkTheme = useNetworkTheme();
 
   // Get the theme for the network this todo was created on
   const todoNetworkTheme = getNetworkTheme(todo.chainId);

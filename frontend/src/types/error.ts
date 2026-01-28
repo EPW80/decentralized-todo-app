@@ -39,7 +39,7 @@ export function isErrorWithCode(error: unknown): error is ErrorWithCode {
 export function isEthereumError(error: unknown): error is EthereumError {
   if (!isErrorWithCode(error)) return false;
 
-  const err = error as Record<string, unknown>;
+  const err = error as unknown as Record<string, unknown>;
   return (
     'error' in err &&
     typeof err.error === 'object' &&

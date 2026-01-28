@@ -36,42 +36,6 @@ const WalletConnect: React.FC = () => {
     return networks[id] || `Chain ${id}`;
   };
 
-  const _switchToSepolia = async () => {
-    try {
-      if (!window.ethereum) return;
-
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0xaa36a7' }], // Sepolia chainId in hex
-      });
-    } catch (err) {
-      console.error('Failed to switch network:', err);
-      // If the chain hasn't been added to MetaMask
-      if ((err as { code?: number })?.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: '0xaa36a7',
-                chainName: 'Sepolia Testnet',
-                nativeCurrency: {
-                  name: 'Sepolia ETH',
-                  symbol: 'ETH',
-                  decimals: 18,
-                },
-                rpcUrls: ['https://rpc.sepolia.org'],
-                blockExplorerUrls: ['https://sepolia.etherscan.io'],
-              },
-            ],
-          });
-        } catch (addError) {
-          console.error('Failed to add network:', addError);
-        }
-      }
-    }
-  };
-
   const isSupported = chainId ? blockchainService.isSupportedNetwork(chainId) : false;
 
   return (
@@ -249,10 +213,9 @@ const WalletConnect: React.FC = () => {
 
                     <CopyButton
                       text={address || ''}
-                      displayText={address && formatAddress(address)}
+                      displayText={address ? formatAddress(address) : undefined}
                       variant="both"
-                      className="text-sm bg-clip-text text-transparent"
-                      style={{ backgroundImage: networkTheme.gradient }}
+                      className="text-sm"
                     />
                   </div>
                 </div>

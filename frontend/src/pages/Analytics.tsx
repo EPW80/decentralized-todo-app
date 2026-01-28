@@ -122,7 +122,7 @@ const Analytics: React.FC = () => {
                 Trust Score - Compact
               </p>
               <TrustScore
-                address={address}
+                address={address ?? undefined}
                 transactionCount={42}
                 confirmations={10}
                 requiredConfirmations={12}
@@ -134,7 +134,7 @@ const Analytics: React.FC = () => {
                 Trust Score - Default
               </p>
               <TrustScore
-                address={address}
+                address={address ?? undefined}
                 transactionCount={42}
                 confirmations={10}
                 requiredConfirmations={12}
@@ -146,7 +146,7 @@ const Analytics: React.FC = () => {
                 Trust Score - Detailed
               </p>
               <TrustScore
-                address={address}
+                address={address ?? undefined}
                 transactionCount={42}
                 confirmations={10}
                 requiredConfirmations={12}
@@ -209,23 +209,22 @@ const Analytics: React.FC = () => {
                 {
                   stage: 'initiated',
                   timestamp: Date.now() - 300000,
-                  description: 'Transaction initiated',
+                  message: 'Transaction initiated',
                 },
                 {
                   stage: 'pending',
                   timestamp: Date.now() - 240000,
-                  description: 'Submitted to mempool',
-                  hash: '0x1234...5678',
+                  message: 'Submitted to mempool',
+                  txHash: '0x1234...5678',
                 },
                 {
                   stage: 'confirming',
                   timestamp: Date.now() - 180000,
-                  description: 'Mining confirmation 8/12',
+                  message: 'Mining confirmation 8/12',
                   blockNumber: 12345678,
                 },
               ]}
               currentStage={demoTransaction.stage}
-              variant="full"
             />
           </div>
         </div>

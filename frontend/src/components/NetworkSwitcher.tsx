@@ -158,7 +158,6 @@ const NetworkSwitcher: React.FC<NetworkSwitcherProps> = ({ onClose }) => {
                           background: `${theme.primaryColor}10`,
                           borderColor: theme.primaryColor,
                           boxShadow: `0 8px 24px ${theme.glowColor}`,
-                          ringColor: `${theme.primaryColor}40`,
                         }
                       : {
                           border: `2px solid ${theme.primaryColor}20`,
