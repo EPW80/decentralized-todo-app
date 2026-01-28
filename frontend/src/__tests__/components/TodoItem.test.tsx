@@ -72,6 +72,7 @@ describe('TodoItem Component', () => {
     completed: false,
     blockchainCreatedAt: new Date().toISOString(),
     blockchainCompletedAt: null,
+    dueDate: null,
     syncStatus: 'synced',
     lastSyncedAt: new Date().toISOString(),
     deleted: false,

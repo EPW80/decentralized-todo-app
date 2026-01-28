@@ -1,4 +1,4 @@
-const { body, param, query, validationResult } = require('express-validator');
+const { body, param, query, validationResult } = require("express-validator");
 
 /**
  * Handle validation errors from express-validator
@@ -8,8 +8,8 @@ function handleValidationErrors(req, res, next) {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      error: 'Validation failed',
-      errors: errors.array()
+      error: "Validation failed",
+      errors: errors.array(),
     });
   }
   next();
@@ -19,56 +19,54 @@ function handleValidationErrors(req, res, next) {
  * Validation middleware for sync endpoint
  */
 const validateSyncRequest = [
-  body('chainId')
+  body("chainId")
     .isInt({ min: 1, max: 999999999 })
-    .withMessage('chainId must be a valid positive integer')
+    .withMessage("chainId must be a valid positive integer")
     .toInt(),
-  body('blockchainId')
+  body("blockchainId")
     .isString()
     .trim()
     .notEmpty()
     .isLength({ min: 1, max: 100 })
-    .withMessage('blockchainId must be a string between 1 and 100 characters')
+    .withMessage("blockchainId must be a string between 1 and 100 characters")
     .matches(/^[0-9]+$/)
-    .withMessage('blockchainId must contain only numbers'),
-  handleValidationErrors
+    .withMessage("blockchainId must contain only numbers"),
+  handleValidationErrors,
 ];
 
 /**
  * Validation middleware for restore endpoint
  */
 const validateRestoreRequest = [
-  body('id')
-    .isMongoId()
-    .withMessage('id must be a valid MongoDB ObjectId'),
-  handleValidationErrors
+  body("id").isMongoId().withMessage("id must be a valid MongoDB ObjectId"),
+  handleValidationErrors,
 ];
 
 /**
  * Validation middleware for address parameter
  */
 const validateAddressParam = [
-  param('address')
+  param("address")
     .isString()
     .trim()
     .matches(/^0x[a-fA-F0-9]{40}$/)
-    .withMessage('address must be a valid Ethereum address'),
-  handleValidationErrors
+    .withMessage("address must be a valid Ethereum address"),
+  handleValidationErrors,
 ];
 
 /**
  * Validation middleware for query parameters
  */
 const validateTodoQuery = [
-  query('includeCompleted')
+  query("includeCompleted")
     .optional()
     .isBoolean()
-    .withMessage('includeCompleted must be a boolean'),
-  query('includeDeleted')
+    .withMessage("includeCompleted must be a boolean"),
+  query("includeDeleted")
     .optional()
     .isBoolean()
-    .withMessage('includeDeleted must be a boolean'),
-  handleValidationErrors
+    .withMessage("includeDeleted must be a boolean"),
+  handleValidationErrors,
 ];
 
 module.exports = {
@@ -76,5 +74,5 @@ module.exports = {
   validateRestoreRequest,
   validateAddressParam,
   validateTodoQuery,
-  handleValidationErrors
+  handleValidationErrors,
 };

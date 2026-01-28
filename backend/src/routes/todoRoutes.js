@@ -45,7 +45,7 @@ router.get(
   ensureOwnership,
   validateAddress,
   validateTodoQuery,
-  getTodosByAddress
+  getTodosByAddress,
 );
 
 // Get user statistics (protected - user can only access their own stats)
@@ -55,7 +55,7 @@ router.get(
   verifyJWT,
   ensureOwnership,
   validateAddress,
-  getUserStats
+  getUserStats,
 );
 
 // Get specific todo by MongoDB ID (protected)
@@ -74,7 +74,7 @@ router.post(
   verifyJWT,
   strictLimiter,
   validateSyncRequest,
-  syncTodoFromBlockchain
+  syncTodoFromBlockchain,
 );
 
 // Restore a deleted todo (protected, expensive operation - strict rate limit)
@@ -85,7 +85,7 @@ router.post(
   verifyJWT,
   strictLimiter,
   validateRestoreRequest,
-  restoreTodo
+  restoreTodo,
 );
 
 // Update a todo's description (protected)

@@ -1,5 +1,5 @@
-const logger = require('../utils/logger');
-const Todo = require('../models/Todo');
+const logger = require("../utils/logger");
+const Todo = require("../models/Todo");
 
 class SyncMonitor {
   constructor(blockchainService) {
@@ -14,13 +14,15 @@ class SyncMonitor {
    */
   start() {
     if (this.isRunning) {
-      logger.warn('Sync monitor already running');
+      logger.warn("Sync monitor already running");
       return;
     }
 
     this.isRunning = true;
     this.timer = setInterval(() => this.checkSync(), this.checkInterval);
-    logger.info(`✓ Sync monitor started (checking every ${this.checkInterval}ms)`);
+    logger.info(
+      `✓ Sync monitor started (checking every ${this.checkInterval}ms)`,
+    );
   }
 
   /**
@@ -32,7 +34,7 @@ class SyncMonitor {
       this.timer = null;
     }
     this.isRunning = false;
-    logger.info('Sync monitor stopped');
+    logger.info("Sync monitor stopped");
   }
 
   /**
@@ -47,9 +49,9 @@ class SyncMonitor {
         await this.checkChainSync(parseInt(chainId));
       }
     } catch (error) {
-      logger.error('Error in sync monitor:', {
+      logger.error("Error in sync monitor:", {
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
     }
   }
@@ -64,7 +66,7 @@ class SyncMonitor {
     try {
       // Get all tasks from database for this chain
       const dbTasks = await Todo.find({ chainId, deleted: false })
-        .select('blockchainId completed')
+        .select("blockchainId completed")
         .lean();
 
       let syncedCount = 0;
@@ -79,10 +81,13 @@ class SyncMonitor {
           // Check if completed status matches
           if (blockchainTask.completed !== dbTask.completed) {
             outOfSyncCount++;
-            logger.warn(`🔄 Task ${dbTask.blockchainId} out of sync on chain ${chainId}:`, {
-              database: { completed: dbTask.completed },
-              blockchain: { completed: blockchainTask.completed }
-            });
+            logger.warn(
+              `🔄 Task ${dbTask.blockchainId} out of sync on chain ${chainId}:`,
+              {
+                database: { completed: dbTask.completed },
+                blockchain: { completed: blockchainTask.completed },
+              },
+            );
 
             // Sync the task
             if (blockchainTask.completed && !dbTask.completed) {
@@ -90,27 +95,34 @@ class SyncMonitor {
               await this.blockchainService.syncTaskCompleted(
                 chainId,
                 BigInt(dbTask.blockchainId),
-                blockchainTask.completedAt
+                blockchainTask.completedAt,
               );
               syncedCount++;
-              logger.info(`✓ Auto-synced TaskCompleted: ${dbTask.blockchainId} on chain ${chainId}`);
+              logger.info(
+                `✓ Auto-synced TaskCompleted: ${dbTask.blockchainId} on chain ${chainId}`,
+              );
             }
           }
         } catch (error) {
           // Task might be deleted or not exist on blockchain - skip
-          if (!error.message.includes('Task not found')) {
-            logger.debug(`Could not check task ${dbTask.blockchainId}:`, error.message);
+          if (!error.message.includes("Task not found")) {
+            logger.debug(
+              `Could not check task ${dbTask.blockchainId}:`,
+              error.message,
+            );
           }
         }
       }
 
       if (outOfSyncCount > 0) {
-        logger.info(`Sync check for chain ${chainId}: ${syncedCount}/${outOfSyncCount} tasks auto-synced`);
+        logger.info(
+          `Sync check for chain ${chainId}: ${syncedCount}/${outOfSyncCount} tasks auto-synced`,
+        );
       }
     } catch (error) {
       logger.error(`Error checking sync for chain ${chainId}:`, {
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
     }
   }

@@ -45,13 +45,13 @@ const loadContractAddresses = () => {
     const network = networks[networkKey];
     const deploymentFile = path.join(
       deploymentsDir,
-      `deployment-${network.chainId}.json`
+      `deployment-${network.chainId}.json`,
     );
 
     try {
       if (fs.existsSync(deploymentFile)) {
         const deploymentData = JSON.parse(
-          fs.readFileSync(deploymentFile, "utf8")
+          fs.readFileSync(deploymentFile, "utf8"),
         );
         // Support multiple deployment formats
         addresses[network.chainId] =
@@ -61,14 +61,14 @@ const loadContractAddresses = () => {
           deploymentData.contracts?.TodoList?.address;
       } else {
         logger.warn(
-          `No deployment file found for ${network.name} (chainId: ${network.chainId})`
+          `No deployment file found for ${network.name} (chainId: ${network.chainId})`,
         );
       }
     } catch (error) {
-      logger.error(
-        `Error loading deployment for ${network.name}:`,
-        { error: error.message, stack: error.stack }
-      );
+      logger.error(`Error loading deployment for ${network.name}:`, {
+        error: error.message,
+        stack: error.stack,
+      });
     }
   });
 
@@ -80,12 +80,15 @@ const loadContractABI = () => {
   try {
     const abiPath = path.join(
       __dirname,
-      "../../../contracts/artifacts/contracts/TodoListV2.sol/TodoListV2.json"
+      "../../../contracts/artifacts/contracts/TodoListV2.sol/TodoListV2.json",
     );
     const artifact = JSON.parse(fs.readFileSync(abiPath, "utf8"));
     return artifact.abi;
   } catch (error) {
-    logger.error("Error loading contract ABI:", { error: error.message, stack: error.stack });
+    logger.error("Error loading contract ABI:", {
+      error: error.message,
+      stack: error.stack,
+    });
     throw new Error("Failed to load contract ABI");
   }
 };

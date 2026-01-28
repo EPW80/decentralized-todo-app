@@ -87,8 +87,19 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   const connect = async () => {
     if (!checkMetaMask()) return;
 
-    // Prevent duplicate connection attempts
-    if (isConnectingRef.current || walletState.isConnected) {
+    // Prevent duplicate connection attempts - check both ref and state
+    if (isConnectingRef.current) {
+      console.debug('Connection already in progress (ref), skipping duplicate request');
+      return;
+    }
+    
+    if (walletState.isConnecting) {
+      console.debug('Connection already in progress (state), skipping duplicate request');
+      return;
+    }
+    
+    if (walletState.isConnected) {
+      console.debug('Already connected, skipping connection request');
       return;
     }
 
@@ -96,7 +107,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     setWalletState((prev) => ({ ...prev, isConnecting: true, error: null }));
 
     try {
-      const browserProvider = new BrowserProvider(window.ethereum);
+      const browserProvider = new BrowserProvider(window.ethereum!);
       const accounts = await browserProvider.send('eth_requestAccounts', []);
       const network = await browserProvider.getNetwork();
 
@@ -115,20 +126,51 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       // Store connection state
       localStorage.setItem('walletConnected', 'true');
     } catch (error: unknown) {
-      console.error('Error connecting wallet:', error);
-
       // Handle MetaMask-specific errors gracefully
       let errorMessage = toErrorMessage(error);
+      let shouldLog = true;
 
-      // If MetaMask is already processing a request, don't show error to user
-      if (isErrorWithCode(error)) {
-        if (error.code === 'UNKNOWN_ERROR' && 'error' in error &&
-            typeof error.error === 'object' && error.error !== null &&
-            'code' in error.error && error.error.code === -32002) {
-          errorMessage = ''; // Don't show error for duplicate requests
-        } else if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
+      // Check for "already processing" error (-32002) in various possible locations
+      const isAlreadyProcessingError = (err: unknown): boolean => {
+        if (!err || typeof err !== 'object') return false;
+        
+        // Direct code check
+        if ('code' in err && err.code === -32002) return true;
+        
+        // Nested error check (ethers.js wrapping)
+        if ('error' in err && typeof err.error === 'object' && err.error !== null) {
+          if ('code' in err.error && err.error.code === -32002) return true;
+        }
+        
+        // Check in info object (newer ethers.js versions)
+        if ('info' in err && typeof err.info === 'object' && err.info !== null) {
+          const info = err.info as Record<string, unknown>;
+          if ('error' in info && typeof info.error === 'object' && info.error !== null) {
+            if ('code' in (info.error as object) && (info.error as { code?: number }).code === -32002) return true;
+          }
+        }
+        
+        // Check message for the error text as fallback
+        if ('message' in err && typeof err.message === 'string') {
+          if (err.message.includes('Already processing eth_requestAccounts')) return true;
+        }
+        
+        return false;
+      };
+
+      if (isAlreadyProcessingError(error)) {
+        // Don't show error for duplicate requests - silently ignore
+        errorMessage = '';
+        shouldLog = false;
+      } else if (isErrorWithCode(error)) {
+        if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
           errorMessage = 'Connection request was rejected';
         }
+      }
+
+      // Only log errors that are unexpected
+      if (shouldLog) {
+        console.error('Error connecting wallet:', error);
       }
 
       setWalletState((prev) => ({
@@ -157,7 +199,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
 
   // Switch network
   const switchNetwork = async (chainId: number) => {
-    if (!provider) return;
+    if (!provider || !window.ethereum) return;
 
     try {
       await window.ethereum.request({
@@ -178,7 +220,8 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!window.ethereum) return;
 
-    const handleAccountsChanged = async (accounts: string[]) => {
+    const handleAccountsChanged = async (...args: unknown[]) => {
+      const accounts = args[0] as string[];
       if (accounts.length === 0) {
         disconnect();
       } else {
@@ -206,7 +249,8 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       }
     };
 
-    const handleChainChanged = (chainIdHex: string) => {
+    const handleChainChanged = (...args: unknown[]) => {
+      const chainIdHex = args[0] as string;
       const newChainId = parseInt(chainIdHex, 16);
       setWalletState((prev) => ({
         ...prev,

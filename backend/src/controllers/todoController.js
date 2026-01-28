@@ -14,13 +14,8 @@ const blockchainService = require("../services/blockchainService");
 const getTodosByAddress = async (req, res, next) => {
   try {
     const { address } = req.params;
-    const {
-      includeCompleted,
-      includeDeleted,
-      search,
-      dueFilter,
-      sort
-    } = req.query;
+    const { includeCompleted, includeDeleted, search, dueFilter, sort } =
+      req.query;
 
     let todos;
 
@@ -31,7 +26,7 @@ const getTodosByAddress = async (req, res, next) => {
         includeDeleted: includeDeleted === "true",
         search,
         dueFilter,
-        sort
+        sort,
       };
       todos = await Todo.findByOwnerWithFilters(address, filters);
     } else {
@@ -39,21 +34,21 @@ const getTodosByAddress = async (req, res, next) => {
       todos = await Todo.findByOwner(
         address,
         includeCompleted !== "false",
-        includeDeleted === "true"
+        includeDeleted === "true",
       );
     }
 
-    const logger = require('../utils/logger');
+    const logger = require("../utils/logger");
     logger.info(`Found ${todos.length} todos for ${address}`, {
       includeCompleted: includeCompleted !== "false",
       includeDeleted: includeDeleted === "true",
-      todos: todos.map(t => ({
+      todos: todos.map((t) => ({
         id: t._id,
         description: t.description,
         chainId: t.chainId,
         completed: t.completed,
-        deleted: t.deleted
-      }))
+        deleted: t.deleted,
+      })),
     });
 
     res.json({
@@ -232,9 +227,10 @@ const syncTodoFromBlockchain = async (req, res, next) => {
         ? new Date(Number(task.completedAt) * 1000)
         : null;
       todo.deleted = task.deleted;
-      todo.deletedAt = task.deleted && task.deletedAt
-        ? new Date(Number(task.deletedAt) * 1000)
-        : null;
+      todo.deletedAt =
+        task.deleted && task.deletedAt
+          ? new Date(Number(task.deletedAt) * 1000)
+          : null;
       todo.syncStatus = "synced";
       todo.lastSyncedAt = new Date();
       await todo.save();
@@ -252,9 +248,10 @@ const syncTodoFromBlockchain = async (req, res, next) => {
           ? new Date(Number(task.completedAt) * 1000)
           : null,
         deleted: task.deleted,
-        deletedAt: task.deleted && task.deletedAt
-          ? new Date(Number(task.deletedAt) * 1000)
-          : null,
+        deletedAt:
+          task.deleted && task.deletedAt
+            ? new Date(Number(task.deletedAt) * 1000)
+            : null,
         syncStatus: "synced",
       });
       await todo.save();

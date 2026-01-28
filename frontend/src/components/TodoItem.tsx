@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { blockchainService } from '../services/blockchain';
 import { HexagonPattern, DigitalGrid, BlockchainBorder } from './patterns';
@@ -26,6 +26,9 @@ const TodoItem: React.FC<TodoItemProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localTodo, setLocalTodo] = useState<Todo>(todo);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDescription, setEditDescription] = useState(todo.description);
+  const editInputRef = useRef<HTMLInputElement>(null);
   const _currentNetworkTheme = useNetworkTheme();
 
   // Get the theme for the network this todo was created on
@@ -35,7 +38,47 @@ const TodoItem: React.FC<TodoItemProps> = ({
   // Update local state when prop changes
   React.useEffect(() => {
     setLocalTodo(todo);
+    setEditDescription(todo.description);
   }, [todo]);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [isEditing]);
+
+  // Get due date status and styling
+  const getDueDateStatus = (): { status: 'overdue' | 'today' | 'upcoming' | 'none'; color: string; bgColor: string; label: string } => {
+    if (!localTodo.dueDate) {
+      return { status: 'none', color: '', bgColor: '', label: '' };
+    }
+
+    const now = new Date();
+    const dueDate = new Date(localTodo.dueDate);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueDateDay = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
+    if (dueDateDay < today) {
+      return { status: 'overdue', color: 'text-red-600', bgColor: 'bg-red-100 border-red-300', label: 'Overdue' };
+    } else if (dueDateDay.getTime() === today.getTime()) {
+      return { status: 'today', color: 'text-yellow-600', bgColor: 'bg-yellow-100 border-yellow-300', label: 'Due Today' };
+    } else {
+      return { status: 'upcoming', color: 'text-green-600', bgColor: 'bg-green-100 border-green-300', label: 'Upcoming' };
+    }
+  };
+
+  const dueDateInfo = getDueDateStatus();
+
+  const formatDueDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined,
+    });
+  };
 
   const handleComplete = async () => {
     if (!provider || !chainId) {
@@ -139,6 +182,117 @@ const TodoItem: React.FC<TodoItemProps> = ({
     }
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditDescription(localTodo.description);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditDescription(localTodo.description);
+    setError(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!provider || !chainId) {
+      setError('Please connect your wallet');
+      return;
+    }
+
+    const trimmedDescription = editDescription.trim();
+    if (!trimmedDescription) {
+      setError('Description cannot be empty');
+      return;
+    }
+
+    if (trimmedDescription === localTodo.description) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    // Optimistic update
+    const optimisticUpdate = {
+      description: trimmedDescription,
+      syncStatus: 'pending' as const,
+    };
+
+    setLocalTodo(prev => ({ ...prev, ...optimisticUpdate }));
+    if (onOptimisticUpdate) {
+      onOptimisticUpdate(todo._id, optimisticUpdate);
+    }
+
+    try {
+      await blockchainService.updateTask(provider, chainId, todo.blockchainId, trimmedDescription);
+      setIsEditing(false);
+
+      setTimeout(() => {
+        onTodoUpdated();
+      }, 4000);
+    } catch (err: unknown) {
+      console.error('Error updating task:', err);
+      setError(toErrorMessage(err) || 'Failed to update task');
+
+      setLocalTodo(todo);
+      if (onOptimisticRevert) {
+        onOptimisticRevert(todo._id);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!provider || !chainId) {
+      setError('Please connect your wallet');
+      return;
+    }
+
+    if (isProcessing) return;
+
+    setIsProcessing(true);
+    setError(null);
+
+    // Optimistic update
+    const optimisticUpdate = {
+      deleted: false,
+      syncStatus: 'pending' as const,
+    };
+
+    setLocalTodo(prev => ({ ...prev, ...optimisticUpdate }));
+    if (onOptimisticUpdate) {
+      onOptimisticUpdate(todo._id, optimisticUpdate);
+    }
+
+    try {
+      await blockchainService.restoreTask(provider, chainId, todo.blockchainId);
+
+      setTimeout(() => {
+        onTodoUpdated();
+      }, 4000);
+    } catch (err: unknown) {
+      console.error('Error restoring task:', err);
+      setError(toErrorMessage(err) || 'Failed to restore task');
+
+      setLocalTodo(todo);
+      if (onOptimisticRevert) {
+        onOptimisticRevert(todo._id);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -217,15 +371,78 @@ const TodoItem: React.FC<TodoItemProps> = ({
               )}
             </div>
             <div className="flex-1">
-              <p
-                className={`text-lg font-medium leading-relaxed ${
-                  localTodo.completed ? 'line-through text-gray-500' : 'text-gray-800'
-                }`}
-              >
-                {localTodo.description}
-              </p>
+              {/* Description - Inline Edit Mode */}
+              {isEditing ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={editInputRef}
+                    type="text"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isProcessing}
+                    className="flex-1 text-lg font-medium px-3 py-2 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all"
+                    style={{
+                      borderColor: todoNetworkTheme.primaryColor,
+                      boxShadow: `0 0 0 3px ${todoNetworkTheme.glowColor}`,
+                    }}
+                    placeholder="Enter task description..."
+                  />
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={isProcessing}
+                    className="p-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
+                    title="Save changes"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={isProcessing}
+                    className="p-2 rounded-lg bg-gray-400 hover:bg-gray-500 text-white transition-colors disabled:opacity-50"
+                    title="Cancel"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2">
+                  <p
+                    className={`text-lg font-medium leading-relaxed flex-1 ${
+                      localTodo.completed ? 'line-through text-gray-500' : 'text-gray-800'
+                    }`}
+                  >
+                    {localTodo.description}
+                  </p>
+                  {!localTodo.completed && !localTodo.deleted && (
+                    <button
+                      onClick={handleEdit}
+                      disabled={isProcessing}
+                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-all"
+                      title="Edit task"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3 text-xs sm:text-sm">
+                {/* Due Date Display with color indicators */}
+                {localTodo.dueDate && (
+                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border ${dueDateInfo.bgColor} ${dueDateInfo.color}`}>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="font-medium">{dueDateInfo.label}: {formatDueDate(localTodo.dueDate)}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-1 sm:gap-1.5 text-gray-600 dark:text-gray-400">
                   <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -319,17 +536,38 @@ const TodoItem: React.FC<TodoItemProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={handleDelete}
-          disabled={isProcessing}
-          className="glass-effect text-red-600 hover:text-white hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 font-medium px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 disabled:opacity-50 flex items-center gap-2 group-hover:shadow-glow-sm self-start sm:self-auto"
-          title="Delete task"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          <span className="hidden sm:inline text-sm">Delete</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {/* Restore Button - Only shown for deleted tasks */}
+          {localTodo.deleted && (
+            <button
+              onClick={handleRestore}
+              disabled={isProcessing}
+              className="glass-effect text-green-600 hover:text-white hover:bg-gradient-to-r hover:from-green-500 hover:to-green-600 font-medium px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 disabled:opacity-50 flex items-center gap-2 group-hover:shadow-glow-sm"
+              title="Restore task"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span className="hidden sm:inline text-sm">Restore</span>
+            </button>
+          )}
+
+          {/* Delete Button - Hidden for already deleted tasks */}
+          {!localTodo.deleted && (
+            <button
+              onClick={handleDelete}
+              disabled={isProcessing}
+              className="glass-effect text-red-600 hover:text-white hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 font-medium px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 disabled:opacity-50 flex items-center gap-2 group-hover:shadow-glow-sm"
+              title="Delete task"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span className="hidden sm:inline text-sm">Delete</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (

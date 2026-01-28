@@ -83,7 +83,7 @@ const todoSchema = new mongoose.Schema(
   },
   {
     timestamps: true, // Adds createdAt and updatedAt for MongoDB
-  }
+  },
 );
 
 // Compound indexes for common queries
@@ -110,7 +110,7 @@ todoSchema.index(
   {
     expireAfterSeconds: 86400, // 24 hours
     partialFilterExpression: { syncStatus: "error" },
-  }
+  },
 );
 
 // Instance methods
@@ -146,7 +146,7 @@ todoSchema.methods.updateDescription = function (newDescription) {
 todoSchema.statics.findByOwner = function (
   ownerAddress,
   includeCompleted = true,
-  includeDeleted = false
+  includeDeleted = false,
 ) {
   const query = {
     owner: ownerAddress.toLowerCase(),
@@ -164,7 +164,10 @@ todoSchema.statics.findByOwner = function (
   return this.find(query).sort({ blockchainCreatedAt: -1 });
 };
 
-todoSchema.statics.findByOwnerWithFilters = function (ownerAddress, filters = {}) {
+todoSchema.statics.findByOwnerWithFilters = function (
+  ownerAddress,
+  filters = {},
+) {
   const query = {
     owner: ownerAddress.toLowerCase(),
   };
@@ -181,11 +184,11 @@ todoSchema.statics.findByOwnerWithFilters = function (ownerAddress, filters = {}
 
   // Apply search filter
   if (filters.search) {
-    query.description = { $regex: filters.search, $options: 'i' };
+    query.description = { $regex: filters.search, $options: "i" };
   }
 
   // Apply due date filter
-  if (filters.dueFilter && filters.dueFilter !== 'all') {
+  if (filters.dueFilter && filters.dueFilter !== "all") {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
@@ -194,14 +197,14 @@ todoSchema.statics.findByOwnerWithFilters = function (ownerAddress, filters = {}
     weekEnd.setDate(weekEnd.getDate() + 7);
 
     switch (filters.dueFilter) {
-      case 'overdue':
+      case "overdue":
         query.dueDate = { $lt: now, $ne: null };
         query.completed = false;
         break;
-      case 'today':
+      case "today":
         query.dueDate = { $gte: today, $lt: tomorrow };
         break;
-      case 'week':
+      case "week":
         query.dueDate = { $gte: today, $lt: weekEnd };
         break;
     }
@@ -211,16 +214,16 @@ todoSchema.statics.findByOwnerWithFilters = function (ownerAddress, filters = {}
   let sortOption = { blockchainCreatedAt: -1 }; // default
   if (filters.sort) {
     switch (filters.sort) {
-      case 'oldest':
+      case "oldest":
         sortOption = { blockchainCreatedAt: 1 };
         break;
-      case 'dueDate':
+      case "dueDate":
         sortOption = { dueDate: 1, blockchainCreatedAt: -1 };
         break;
-      case 'alpha':
+      case "alpha":
         sortOption = { description: 1 };
         break;
-      case 'newest':
+      case "newest":
       default:
         sortOption = { blockchainCreatedAt: -1 };
         break;

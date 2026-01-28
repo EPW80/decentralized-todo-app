@@ -154,6 +154,16 @@ export const blockchainService = {
     return Number(count);
   },
 
+  // Restore a deleted task
+  async restoreTask(provider: BrowserProvider, chainId: number, taskId: string) {
+    const contract = await this.getContractWithSigner(provider, chainId);
+    if (!contract) throw new Error('Contract not available');
+
+    const tx = await contract.restoreTask(taskId);
+    const receipt = await tx.wait();
+    return { transactionHash: receipt.hash };
+  },
+
   // Check if network is supported
   isSupportedNetwork(chainId: number): boolean {
     return chainId in CONTRACT_ADDRESSES && CONTRACT_ADDRESSES[chainId] !== '';

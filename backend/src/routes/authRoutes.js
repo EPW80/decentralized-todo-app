@@ -1,6 +1,6 @@
-const express = require('express');
-const logger = require('../utils/logger');
-const { verifyWalletSignature, generateToken } = require('../middleware/auth');
+const express = require("express");
+const logger = require("../utils/logger");
+const { verifyWalletSignature, generateToken } = require("../middleware/auth");
 const router = express.Router();
 
 /**
@@ -21,7 +21,7 @@ const router = express.Router();
  *   "address": "0x..."
  * }
  */
-router.post('/login', verifyWalletSignature, (req, res) => {
+router.post("/login", verifyWalletSignature, (req, res) => {
   try {
     const { userAddress } = req;
     const token = generateToken(userAddress);
@@ -29,13 +29,13 @@ router.post('/login', verifyWalletSignature, (req, res) => {
     res.json({
       success: true,
       token,
-      address: userAddress
+      address: userAddress,
     });
   } catch (error) {
-    logger.error('Login error:', { error: error.message, stack: error.stack });
+    logger.error("Login error:", { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
-      error: 'Failed to generate authentication token'
+      error: "Failed to generate authentication token",
     });
   }
 });
@@ -45,7 +45,7 @@ router.post('/login', verifyWalletSignature, (req, res) => {
  * Get a nonce for the user to sign
  * This helps prevent replay attacks
  */
-router.get('/nonce/:address', (req, res) => {
+router.get("/nonce/:address", (req, res) => {
   const { address } = req.params;
 
   // Generate a simple nonce (in production, you might want to store these)
@@ -56,7 +56,7 @@ router.get('/nonce/:address', (req, res) => {
     success: true,
     message: `Sign this message to authenticate with the Todo App.\n\nAddress: ${address}\nNonce: ${nonce}\nTimestamp: ${timestamp}`,
     nonce,
-    timestamp
+    timestamp,
   });
 });
 

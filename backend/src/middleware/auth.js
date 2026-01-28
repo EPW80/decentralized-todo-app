@@ -1,6 +1,6 @@
 const { ethers } = require("ethers");
 const jwt = require("jsonwebtoken");
-const logger = require('../utils/logger');
+const logger = require("../utils/logger");
 
 /**
  * Verify Ethereum signature for wallet-based authentication
@@ -36,7 +36,10 @@ const verifyWalletSignature = async (req, res, next) => {
     req.userAddress = address.toLowerCase();
     next();
   } catch (error) {
-    logger.error("Signature verification error:", { error: error.message, stack: error.stack });
+    logger.error("Signature verification error:", {
+      error: error.message,
+      stack: error.stack,
+    });
     return res.status(401).json({
       success: false,
       error: "Signature verification failed",

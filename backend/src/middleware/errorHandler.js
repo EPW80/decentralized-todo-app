@@ -1,8 +1,8 @@
-const logger = require('../utils/logger');
+const logger = require("../utils/logger");
 
 const errorHandler = (err, req, res, _next) => {
   // Log full error internally (for debugging)
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === "development") {
     logger.error("Error:", { error: err.message, stack: err.stack });
   } else {
     // In production, log sanitized version
@@ -10,7 +10,7 @@ const errorHandler = (err, req, res, _next) => {
       name: err.name,
       message: err.message,
       code: err.code,
-      statusCode: err.statusCode
+      statusCode: err.statusCode,
     });
   }
 
@@ -50,7 +50,10 @@ const errorHandler = (err, req, res, _next) => {
   // Blockchain/ethers errors
   if (err.code && err.code.startsWith("CALL_EXCEPTION")) {
     // Log full error internally for debugging
-    logger.error('Blockchain error details:', { error: err.message, stack: err.stack });
+    logger.error("Blockchain error details:", {
+      error: err.message,
+      stack: err.stack,
+    });
 
     return res.status(400).json({
       success: false,

@@ -66,7 +66,7 @@ router.get("/detailed", async (req, res) => {
 
       health.blockchain = {
         networks: networkInfo,
-        monitoring: healthStatus
+        monitoring: healthStatus,
       };
     }
 

@@ -6,8 +6,11 @@ const logger = require("../utils/logger");
  * Removes credentials and sensitive connection details
  */
 const sanitizeMongoURI = (uri) => {
-  if (!uri) return '[NO URI]';
-  return uri.replace(/mongodb(\+srv)?:\/\/([^@]+@)?([^/]+)/g, 'mongodb://*****@$3');
+  if (!uri) return "[NO URI]";
+  return uri.replace(
+    /mongodb(\+srv)?:\/\/([^@]+@)?([^/]+)/g,
+    "mongodb://*****@$3",
+  );
 };
 
 const connectDB = async () => {
@@ -24,7 +27,9 @@ const connectDB = async () => {
     await mongoose.connect(mongoURI, options);
 
     mongoose.connection.on("error", (err) => {
-      const sanitizedError = err.message ? sanitizeMongoURI(err.message) : 'Connection error';
+      const sanitizedError = err.message
+        ? sanitizeMongoURI(err.message)
+        : "Connection error";
       logger.error("MongoDB connection error:", { error: sanitizedError });
     });
 
@@ -38,9 +43,11 @@ const connectDB = async () => {
 
     return mongoose.connection;
   } catch (error) {
-    const sanitizedError = error.message ? sanitizeMongoURI(error.message) : 'Connection failed';
+    const sanitizedError = error.message
+      ? sanitizeMongoURI(error.message)
+      : "Connection failed";
     logger.error("Error connecting to MongoDB:", { error: sanitizedError });
-    throw new Error('Database connection failed');
+    throw new Error("Database connection failed");
   }
 };
 
