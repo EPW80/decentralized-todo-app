@@ -161,9 +161,9 @@ describe('Contract Event Validation', () => {
     test('should handle all contract events via listeners or filters', () => {
       contractEvents.forEach(eventName => {
         // Events can be handled either via filters or direct listeners
-        // Check for either pattern
+        // Check for either pattern (allow whitespace/newlines between on( and event name)
         const filterPattern = new RegExp(`filters\\.${eventName}\\(\\)`);
-        const listenerPattern = new RegExp(`on\\(['"]${eventName}['"]`);
+        const listenerPattern = new RegExp(`on\\(\\s*['"]${eventName}['"]`, 's');
 
         const hasFilter = filterPattern.test(serviceCode);
         const hasListener = listenerPattern.test(serviceCode);
@@ -183,7 +183,8 @@ describe('Contract Event Validation', () => {
 
     test('should register handlers for all contract events', () => {
       contractEvents.forEach(eventName => {
-        const handlerPattern = new RegExp(`on\\(['"]${eventName}['"]`);
+        // Allow whitespace/newlines between on( and event name
+        const handlerPattern = new RegExp(`on\\(\\s*['"]${eventName}['"]`, 's');
         expect(serviceCode).toMatch(handlerPattern);
       });
     });
