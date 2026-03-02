@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import * as FocusTrapReact from 'focus-trap-react';
 
-const FocusTrapComponent = (FocusTrapReact as any).default || FocusTrapReact;
+const FocusTrapComponent = (FocusTrapReact as { default?: typeof FocusTrapReact }).default || FocusTrapReact;
 import WalletConnect from './WalletConnect';
 import ThemeToggle from './ThemeToggle';
 import { useNetworkTheme } from '../hooks/useNetworkTheme';
