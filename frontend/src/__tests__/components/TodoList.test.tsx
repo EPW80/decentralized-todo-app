@@ -121,10 +121,10 @@ describe('TodoList Component', () => {
 
       render(<TodoList />);
 
-      expect(screen.getByText(/loading/i)).toBeInTheDocument();
+      expect(screen.getByText(/loading your tasks from the blockchain/i)).toBeInTheDocument();
 
       await waitFor(() => {
-        expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/loading your tasks from the blockchain/i)).not.toBeInTheDocument();
       });
     });
   });

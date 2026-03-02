@@ -3,6 +3,7 @@ import { useWeb3 } from '../contexts/Web3Context';
 import { apiService } from '../services/api';
 import TodoItem from './TodoItem';
 import AddTodoForm from './AddTodoForm';
+import LoadingSpinner from './LoadingSpinner';
 import { HexagonPattern, NetworkNodes, DigitalGrid, ChainLinkPattern } from './patterns';
 import type { Todo, UserStats } from '../types/todo';
 
@@ -299,12 +300,10 @@ const TodoList: React.FC = () => {
           <div className="glass-effect rounded-2xl shadow-glow p-12 text-center animate-scale-in relative overflow-hidden">
             <NetworkNodes nodeCount={12} animated={true} />
             <ChainLinkPattern count={3} animated={true} className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-20" />
-            <div className="inline-block relative z-10">
-              <div className="w-20 h-20 gradient-primary rounded-full animate-pulse"></div>
-              <div className="absolute inset-0 w-20 h-20 gradient-primary rounded-full animate-ping opacity-50"></div>
+            <div className="relative z-10">
+              <LoadingSpinner size="xl" message="Loading your tasks from the blockchain..." variant="blockchain" />
+              <p className="mt-2 text-gray-500 dark:text-gray-400 text-sm">This may take a moment</p>
             </div>
-            <p className="mt-6 text-gray-600 font-medium text-lg relative z-10">Loading your tasks from the blockchain...</p>
-            <p className="mt-2 text-gray-500 text-sm relative z-10">This may take a moment</p>
           </div>
         ) : filteredTodos.length === 0 ? (
           <div className="glass-effect rounded-2xl shadow-glow p-12 text-center animate-scale-in relative overflow-hidden">

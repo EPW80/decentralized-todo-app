@@ -4,6 +4,23 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    // Enable build optimizations
+    rollupOptions: {
+      output: {
+        // Manual chunk splitting for better caching
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'web3-vendor': ['ethers'],
+        }
+      }
+    },
+    // Optimize chunk size warning limit
+    chunkSizeWarningLimit: 1000,
+    // Image optimization - Vite handles static assets efficiently by default
+    // Images in public/ are served as-is, images imported in code are optimized
+    assetsInlineLimit: 4096, // Inline assets smaller than 4kb as base64
+  },
   test: {
     globals: true,
     environment: 'jsdom',

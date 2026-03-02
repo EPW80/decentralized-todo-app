@@ -178,11 +178,11 @@ const About: React.FC = () => {
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
-                    Polygon Mumbai
+                    Polygon Amoy
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
-                    Arbitrum Goerli
+                    Arbitrum Sepolia
                   </li>
                 </ul>
               </div>

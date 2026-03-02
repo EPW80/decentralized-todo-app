@@ -29,8 +29,8 @@ const WalletConnect: React.FC = () => {
       1: 'Ethereum Mainnet',
       31337: 'Localhost',
       11155111: 'Sepolia',
-      80001: 'Polygon Mumbai',
-      421613: 'Arbitrum Goerli',
+      80002: 'Polygon Amoy',
+      421614: 'Arbitrum Sepolia',
       11155420: 'Optimism Sepolia',
     };
     return networks[id] || `Chain ${id}`;

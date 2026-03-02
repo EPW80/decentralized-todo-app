@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Async font loading with font-display: swap for better performance */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap') layer(fonts);
 
 @tailwind base;
 @tailwind components;
@@ -744,15 +745,79 @@ body::before {
   color: #6b7280 !important;
 }
 
+/* WCAG AA Color Contrast Fixes */
+/* Minimum contrast ratio: 4.5:1 for normal text, 3:1 for large text */
+
+/* Improve contrast for gray text on light backgrounds */
+.text-gray-600 {
+  color: #4b5563 !important; /* Improved from #6b7280 for better contrast */
+}
+
+.text-gray-700 {
+  color: #374151 !important; /* Already has good contrast */
+}
+
+/* Improve contrast for disabled states */
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.7; /* Improved from 0.6 for better visibility */
+  color: #1f2937; /* Ensure text is readable when disabled */
+}
+
+/* Ensure link contrast in navigation */
+nav a:not([style*="color"]) {
+  color: #374151; /* Ensure sufficient contrast */
+}
+
+.dark nav a:not([style*="color"]) {
+  color: #d1d5db; /* Ensure sufficient contrast in dark mode */
+}
+
+/* Improve placeholder text contrast */
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280; /* WCAG AA compliant */
+  opacity: 1;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #9ca3af; /* Improved contrast for dark mode */
+  opacity: 1;
+}
+
+/* Improve error/warning text contrast */
+.text-red-500 {
+  color: #dc2626 !important; /* Better contrast than default red-500 */
+}
+
+.text-yellow-500 {
+  color: #d97706 !important; /* Better contrast than default yellow-500 */
+}
+
+/* Ensure network badge text has proper contrast */
+.dark .text-gray-300 {
+  color: #e5e7eb !important; /* Ensure sufficient contrast */
+}
+
+.dark .text-gray-400 {
+  color: #d1d5db !important; /* Improved from #9ca3af */
+}
+
 /* Smooth transitions for all interactive elements */
 button, a, input, textarea, select {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Focus visible for accessibility */
+/* Enhanced Focus visible for accessibility */
+/* WCAG 2.4.7 (Level AA) - Focus Visible */
 *:focus-visible {
-  outline: 2px solid #667eea;
+  outline: 3px solid #667eea; /* Increased from 2px for better visibility */
   outline-offset: 2px;
+}
+
+.dark *:focus-visible {
+  outline-color: #a78bfa; /* Better contrast in dark mode */
 }
 
 /* Smooth scroll behavior */
@@ -760,12 +825,63 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Reduced motion for accessibility */
+/* Enhanced reduced motion support for accessibility */
+/* WCAG 2.3.3 (Level AAA) - Animation from Interactions */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
+    /* Disable animations */
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+
+    /* Reduce transition duration to near-instant */
     transition-duration: 0.01ms !important;
+
+    /* Disable scroll behavior animations */
+    scroll-behavior: auto !important;
+  }
+
+  /* Specifically disable decorative animations */
+  .animate-float,
+  .animate-spin,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-slide-in,
+  .animate-slide-in-right,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-shimmer,
+  .loading-shimmer,
+  .animate-border-flow,
+  .animate-node-glow,
+  .animate-hexagon-pulse,
+  .animate-block-rotate,
+  .animate-particle-float,
+  .animate-chain-pulse,
+  .animate-glow-pulse,
+  .animate-success-expand,
+  .animate-gradient-rotate,
+  .animate-rainbow-flow,
+  .animate-glow-pulse-intense,
+  .animate-float-3d {
+    animation: none !important;
+  }
+
+  /* Disable transform animations but keep instant transforms */
+  .hover\:scale-105:hover,
+  .hover\:scale-110:hover,
+  .hover\:-translate-y-1:hover,
+  .group:hover .group-hover\:scale-110,
+  .group:hover .group-hover\:rotate-6 {
+    transform: none !important;
+  }
+
+  /* Keep focus indicators visible but without animation */
+  *:focus-visible {
+    outline: 2px solid #667eea !important;
+    outline-offset: 2px !important;
+    transition: none !important;
   }
 }
 

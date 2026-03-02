@@ -36,15 +36,15 @@ const config: HardhatUserConfig = {
       accounts: getAccounts(),
       chainId: 11155111,
     },
-    polygonMumbai: {
-      url: process.env.POLYGON_MUMBAI_RPC_URL || "https://rpc-mumbai.maticvigil.com",
+    polygonAmoy: {
+      url: process.env.POLYGON_AMOY_RPC_URL || "https://rpc-amoy.polygon.technology",
       accounts: getAccounts(),
-      chainId: 80001,
+      chainId: 80002,
     },
-    arbitrumGoerli: {
-      url: process.env.ARBITRUM_GOERLI_RPC_URL || "https://goerli-rollup.arbitrum.io/rpc",
+    arbitrumSepolia: {
+      url: process.env.ARBITRUM_SEPOLIA_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc",
       accounts: getAccounts(),
-      chainId: 421613,
+      chainId: 421614,
     },
     optimismSepolia: {
       url: process.env.OPTIMISM_SEPOLIA_RPC_URL || "https://sepolia.optimism.io",
@@ -61,8 +61,8 @@ const config: HardhatUserConfig = {
     apiKey: {
       sepolia: process.env.ETHERSCAN_API_KEY || "",
       mainnet: process.env.ETHERSCAN_API_KEY || "",
-      polygonMumbai: process.env.POLYGONSCAN_API_KEY || "",
-      arbitrumGoerli: process.env.ARBISCAN_API_KEY || "",
+      polygonAmoy: process.env.POLYGONSCAN_API_KEY || "",
+      arbitrumSepolia: process.env.ARBISCAN_API_KEY || "",
       optimismSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY || "",
     },
   },

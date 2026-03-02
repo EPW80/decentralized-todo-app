@@ -15,15 +15,15 @@ vi.mock('../../services/api', () => ({
 // Mock ethers module with inline class definition
 vi.mock('ethers', async () => {
   const actual = await vi.importActual('ethers');
-  
+
   // Define mock provider class inside the factory
   const MockBrowserProvider = class {
     private ethereum: any;
-    
+
     constructor(ethereum: unknown) {
       this.ethereum = ethereum;
     }
-    
+
     // Delegate to window.ethereum.request so tests can control behavior
     async send(method: string, params?: any[]) {
       if (this.ethereum && this.ethereum.request) {
@@ -31,19 +31,19 @@ vi.mock('ethers', async () => {
       }
       throw new Error('No ethereum provider');
     }
-    
+
     async getSigner() {
       return {
         signMessage: vi.fn().mockResolvedValue('0xmocksignature'),
         getAddress: vi.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
       };
     }
-    
+
     async getNetwork() {
       return { chainId: BigInt(1), name: 'mainnet' };
     }
   };
-  
+
   return {
     ...actual,
     BrowserProvider: MockBrowserProvider,
@@ -70,10 +70,10 @@ const TestComponent = () => {
 describe('Web3Context', () => {
   let mockEthereum: any;
   const mockAddress = '0x1234567890123456789012345678901234567890';
-  
+
   // Shared localStorage mock store 
   let localStorageStore: Record<string, string> = {};
-  
+
   // Create persistent localStorage mock
   const localStorageMock = {
     getItem: vi.fn((key: string) => localStorageStore[key] ?? null),
@@ -95,7 +95,7 @@ describe('Web3Context', () => {
   beforeEach(async () => {
     // Clear mock call history but keep implementations
     vi.clearAllMocks();
-    
+
     // Reset API mock implementations to avoid test pollution
     vi.mocked(apiService.apiService.getNonce).mockReset();
     vi.mocked(apiService.apiService.login).mockReset();
@@ -152,7 +152,7 @@ describe('Web3Context', () => {
 
     it('should throw error when useWeb3 is used outside provider', () => {
       // Suppress console.error for this test
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
       expect(() => {
         render(<TestComponent />);
@@ -194,15 +194,15 @@ describe('Web3Context', () => {
       }, { timeout: 5000 });
 
       expect(screen.getByTestId('address')).toHaveTextContent(mockAddress);
-      
+
       // Verify API calls were made
       expect(apiService.apiService.getNonce).toHaveBeenCalledWith(mockAddress);
       expect(apiService.apiService.login).toHaveBeenCalledWith(
-        mockAddress, 
-        '0xmocksignature', 
+        mockAddress,
+        '0xmocksignature',
         'Sign this message to authenticate'
       );
-      
+
       // Check localStorage was updated
       expect(localStorageStore['authToken']).toBe('mock-jwt-token');
       expect(localStorageStore['walletConnected']).toBe('true');
@@ -306,7 +306,7 @@ describe('Web3Context', () => {
       await act(async () => {
         await userEvent.click(connectBtn);
       });
-      
+
       // Click again while first request is pending
       await act(async () => {
         await userEvent.click(connectBtn);

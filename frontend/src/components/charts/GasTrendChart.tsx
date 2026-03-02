@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useHistoricalGasPrice } from '../../hooks/useGasPrice';
 import { useNetworkTheme } from '../../hooks/useNetworkTheme';
 import { getGasPriceLevel } from '../../types/transaction';
+import LoadingSpinner from '../LoadingSpinner';
 
 interface GasTrendChartProps {
   hours?: number;
@@ -61,11 +62,10 @@ const GasTrendChart: React.FC<GasTrendChartProps> = ({ hours = 24, height = 200 
   if (loading) {
     return (
       <div
-        className="glass-layer-2 rounded-2xl p-6 animate-pulse"
+        className="glass-layer-2 rounded-2xl p-6 flex items-center justify-center"
         style={{ height: height + 80 }}
       >
-        <div className="h-4 bg-gray-300 rounded w-1/3 mb-4"></div>
-        <div className="h-full bg-gray-200 rounded"></div>
+        <LoadingSpinner size="md" message="Loading gas price data..." />
       </div>
     );
   }

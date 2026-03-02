@@ -16,7 +16,7 @@ const API_ENDPOINTS: Record<number, string> = {
   1: 'https://api.etherscan.io/api',
   11155111: 'https://api-sepolia.etherscan.io/api', // Sepolia
   137: 'https://api.polygonscan.com/api', // Polygon
-  80001: 'https://api-testnet.polygonscan.com/api', // Mumbai
+  80002: 'https://api-amoy.polygonscan.com/api', // Amoy
   // For other networks, we'll fallback to provider gasPrice
 };
 

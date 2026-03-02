@@ -394,7 +394,7 @@ The backend listens for blockchain events in real-time. However:
 ### Testing
 - Backend has Jest test suite with 70% coverage target
 - Run tests before deployment: `npm test`
-- See `backend/TESTING.md` for details
+- Frontend has Vitest suite with React Testing Library
 
 ## Security Considerations
 
@@ -484,31 +484,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Documentation
 
-- **[Backend API Documentation](backend/README.md)** - Comprehensive backend guide
-  - API endpoints and responses
-  - Environment configuration
-  - Logging system
-  - Testing guide
-  - Troubleshooting
-
-- **[Backend Testing Guide](backend/TESTING.md)** - Testing infrastructure
-  - Test coverage details
-  - Running tests
-  - Writing new tests
-
-- **[Phase 3 Progress](PHASE3_PROGRESS.md)** - Implementation progress
-  - Logging implementation
-  - Test coverage status
-  - Completed features
-
-- **[Security Implementation](SECURITY_IMPLEMENTATION.md)** - Security features
-  - TodoListV2 security features
-  - Authentication system
-  - Best practices
-
-- **[Deployment Guide](DEPLOYMENT_COMPLETE.md)** - Deployment information
-  - Contract deployments
-  - Network configurations
+- **[Project Roadmap & Status](claude.md)** - Comprehensive project status, phases, and remaining work
+- Smart contract docs: See `contracts/` directory for Solidity source and Hardhat tests
+- Backend API: See `backend/src/routes/` for available endpoints
+- Frontend: Built with React + TypeScript + Vite
 
 ## Support
 

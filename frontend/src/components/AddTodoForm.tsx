@@ -42,8 +42,8 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
       const networkNames: Record<number, string> = {
         31337: 'Localhost',
         11155111: 'Sepolia',
-        80001: 'Polygon Mumbai',
-        421613: 'Arbitrum Goerli',
+        80002: 'Polygon Amoy',
+        421614: 'Arbitrum Sepolia',
         11155420: 'Optimism Sepolia',
       };
       const supportedNetworks = Object.entries(networkNames)

@@ -46,10 +46,10 @@ export const networkThemes: Record<number, NetworkTheme> = {
     badgeGradient: 'from-[#8247E5] to-[#9D6BF0]',
   },
 
-  // Polygon Mumbai Testnet
-  80001: {
-    chainId: 80001,
-    name: 'Polygon Mumbai',
+  // Polygon Amoy Testnet
+  80002: {
+    chainId: 80002,
+    name: 'Polygon Amoy',
     primaryColor: '#8247E5',
     secondaryColor: '#9D6BF0',
     accentColor: '#6A23D8',
@@ -70,10 +70,10 @@ export const networkThemes: Record<number, NetworkTheme> = {
     badgeGradient: 'from-[#28A0F0] to-[#4DB8F5]',
   },
 
-  // Arbitrum Goerli Testnet
-  421613: {
-    chainId: 421613,
-    name: 'Arbitrum Goerli',
+  // Arbitrum Sepolia Testnet
+  421614: {
+    chainId: 421614,
+    name: 'Arbitrum Sepolia',
     primaryColor: '#28A0F0',
     secondaryColor: '#4DB8F5',
     accentColor: '#0C88D8',

@@ -56,9 +56,9 @@ vi.mock('../../config/networkThemes', () => ({
       glowColor: 'rgba(102, 126, 234, 0.5)',
       badgeGradient: 'from-[#667eea] to-[#764ba2]',
     },
-    80001: {
-      chainId: 80001,
-      name: 'Polygon Mumbai',
+    80002: {
+      chainId: 80002,
+      name: 'Polygon Amoy',
       primaryColor: '#8247E5',
       secondaryColor: '#9D6BF0',
       accentColor: '#6A23D8',
@@ -76,9 +76,9 @@ vi.mock('../../config/networkThemes', () => ({
       glowColor: 'rgba(40, 160, 240, 0.35)',
       badgeGradient: 'from-[#28A0F0] to-[#4DB8F5]',
     },
-    421613: {
-      chainId: 421613,
-      name: 'Arbitrum Goerli',
+    421614: {
+      chainId: 421614,
+      name: 'Arbitrum Sepolia',
       primaryColor: '#28A0F0',
       secondaryColor: '#4DB8F5',
       accentColor: '#0C88D8',

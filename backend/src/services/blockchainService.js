@@ -257,9 +257,9 @@ class BlockchainService {
       1: 12, // Ethereum Mainnet - 12 blocks (~3 minutes)
       11155111: 12, // Sepolia - 12 blocks
       137: 128, // Polygon Mainnet - 128 blocks (~5 minutes)
-      80001: 128, // Mumbai - 128 blocks
+      80002: 128, // Amoy - 128 blocks
       42161: 1, // Arbitrum One - 1 block (fast finality)
-      421613: 1, // Arbitrum Goerli - 1 block
+      421614: 1, // Arbitrum Sepolia - 1 block
       10: 1, // Optimism - 1 block (fast finality)
       11155420: 1, // Optimism Sepolia - 1 block
       31337: 1, // Localhost/Hardhat - 1 block
@@ -351,9 +351,9 @@ class BlockchainService {
       1: 7200, // Ethereum Mainnet - 12s blocks
       11155111: 7200, // Sepolia - 12s blocks
       137: 43200, // Polygon Mainnet - 2s blocks
-      80001: 43200, // Mumbai - 2s blocks
+      80002: 43200, // Amoy - 2s blocks
       42161: 240000, // Arbitrum One - 0.36s blocks
-      421613: 240000, // Arbitrum Goerli - 0.36s blocks
+      421614: 240000, // Arbitrum Sepolia - 0.36s blocks
       10: 43200, // Optimism - 2s blocks
       11155420: 43200, // Optimism Sepolia - 2s blocks
       31337: 7200, // Localhost/Hardhat - assume 12s
@@ -370,9 +370,9 @@ class BlockchainService {
       1: 12, // Ethereum Mainnet
       11155111: 12, // Sepolia
       137: 2, // Polygon Mainnet
-      80001: 2, // Mumbai
+      80002: 2, // Amoy
       42161: 0.36, // Arbitrum One
-      421613: 0.36, // Arbitrum Goerli
+      421614: 0.36, // Arbitrum Sepolia
       10: 2, // Optimism
       11155420: 2, // Optimism Sepolia
       31337: 12, // Localhost/Hardhat

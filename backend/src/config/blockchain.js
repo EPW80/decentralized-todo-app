@@ -16,17 +16,17 @@ const networks = {
     rpcUrl: process.env.ETHEREUM_SEPOLIA_RPC || "",
     rpcBackup: process.env.ETHEREUM_SEPOLIA_RPC_BACKUP || "",
   },
-  polygonMumbai: {
-    name: "polygonMumbai",
-    chainId: 80001,
-    rpcUrl: process.env.POLYGON_MUMBAI_RPC || "",
-    rpcBackup: process.env.POLYGON_MUMBAI_RPC_BACKUP || "",
+  polygonAmoy: {
+    name: "polygonAmoy",
+    chainId: 80002,
+    rpcUrl: process.env.POLYGON_AMOY_RPC || "",
+    rpcBackup: process.env.POLYGON_AMOY_RPC_BACKUP || "",
   },
-  arbitrumGoerli: {
-    name: "arbitrumGoerli",
-    chainId: 421613,
-    rpcUrl: process.env.ARBITRUM_GOERLI_RPC || "",
-    rpcBackup: process.env.ARBITRUM_GOERLI_RPC_BACKUP || "",
+  arbitrumSepolia: {
+    name: "arbitrumSepolia",
+    chainId: 421614,
+    rpcUrl: process.env.ARBITRUM_SEPOLIA_RPC || "",
+    rpcBackup: process.env.ARBITRUM_SEPOLIA_RPC_BACKUP || "",
   },
   optimismSepolia: {
     name: "optimismSepolia",

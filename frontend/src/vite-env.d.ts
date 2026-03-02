@@ -6,8 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_DEFAULT_CHAIN_ID: string;
   readonly VITE_CONTRACT_ADDRESS_31337: string;
   readonly VITE_CONTRACT_ADDRESS_11155111: string;
-  readonly VITE_CONTRACT_ADDRESS_80001: string;
-  readonly VITE_CONTRACT_ADDRESS_421613: string;
+  readonly VITE_CONTRACT_ADDRESS_80002: string;
+  readonly VITE_CONTRACT_ADDRESS_421614: string;
   readonly VITE_CONTRACT_ADDRESS_11155420: string;
 }
 

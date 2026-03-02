@@ -26,7 +26,7 @@ describe('CopyButton Component', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100);
     });
-    
+
     expect(screen.getByRole('button')).toBeInTheDocument();
     expect(screen.getByText('Copy Me')).toBeInTheDocument();
   });
@@ -43,7 +43,7 @@ describe('CopyButton Component', () => {
     render(<CopyButton text={textToCopy} />);
 
     const button = screen.getByRole('button');
-    
+
     await act(async () => {
       fireEvent.click(button);
       await vi.advanceTimersByTimeAsync(100);
@@ -56,7 +56,7 @@ describe('CopyButton Component', () => {
     render(<CopyButton text="Hello World" />);
 
     const button = screen.getByRole('button');
-    
+
     await act(async () => {
       fireEvent.click(button);
       await vi.advanceTimersByTimeAsync(100);
@@ -69,7 +69,7 @@ describe('CopyButton Component', () => {
     render(<CopyButton text="Hello World" />);
 
     const button = screen.getByRole('button');
-    
+
     await act(async () => {
       fireEvent.click(button);
       await vi.advanceTimersByTimeAsync(100);
@@ -86,13 +86,13 @@ describe('CopyButton Component', () => {
   });
 
   it('handles copy errors gracefully', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('Copy failed'));
 
     render(<CopyButton text="Hello World" />);
 
     const button = screen.getByRole('button');
-    
+
     await act(async () => {
       fireEvent.click(button);
       await vi.advanceTimersByTimeAsync(100);

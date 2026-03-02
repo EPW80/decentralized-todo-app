@@ -13,8 +13,8 @@ interface TaskStruct {
 const CONTRACT_ADDRESSES: Record<number, string> = {
   31337: import.meta.env.VITE_CONTRACT_ADDRESS_31337 || '',
   11155111: import.meta.env.VITE_CONTRACT_ADDRESS_11155111 || '',
-  80001: import.meta.env.VITE_CONTRACT_ADDRESS_80001 || '',
-  421613: import.meta.env.VITE_CONTRACT_ADDRESS_421613 || '',
+  80002: import.meta.env.VITE_CONTRACT_ADDRESS_80002 || '',
+  421614: import.meta.env.VITE_CONTRACT_ADDRESS_421614 || '',
   11155420: import.meta.env.VITE_CONTRACT_ADDRESS_11155420 || '',
 };
 
