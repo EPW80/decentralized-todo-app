@@ -1,8 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, type ComponentType, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import * as FocusTrapReact from 'focus-trap-react';
 
-const FocusTrapComponent = (FocusTrapReact as { default?: typeof FocusTrapReact }).default || FocusTrapReact;
+interface FocusTrapProps {
+  focusTrapOptions?: {
+    initialFocus?: (() => HTMLElement | undefined) | false;
+    allowOutsideClick?: boolean;
+    escapeDeactivates?: boolean;
+  };
+  children?: ReactNode;
+}
+
+const FocusTrapComponent: ComponentType<FocusTrapProps> =
+  (FocusTrapReact as { default?: ComponentType<FocusTrapProps> }).default ||
+  (FocusTrapReact as unknown as ComponentType<FocusTrapProps>);
 import WalletConnect from './WalletConnect';
 import ThemeToggle from './ThemeToggle';
 import { useNetworkTheme } from '../hooks/useNetworkTheme';
