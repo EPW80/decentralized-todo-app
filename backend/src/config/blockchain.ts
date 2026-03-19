@@ -1,9 +1,18 @@
-const path = require("path");
-const fs = require("fs");
+import path from "path";
+import fs from "fs";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const logger = require("../utils/logger");
 
+interface NetworkConfig {
+  name: string;
+  chainId: number;
+  rpcUrl: string;
+  rpcBackup: string;
+}
+
 // Network configurations with backup RPC URLs for failover
-const networks = {
+const networks: Record<string, NetworkConfig> = {
   localhost: {
     name: "localhost",
     chainId: 31337,
@@ -36,9 +45,18 @@ const networks = {
   },
 };
 
+interface DeploymentData {
+  proxy?: string;
+  todoListAddress?: string;
+  contracts?: {
+    TodoListV2?: { address: string };
+    TodoList?: { address: string };
+  };
+}
+
 // Load contract addresses from deployment files
-const loadContractAddresses = () => {
-  const addresses = {};
+const loadContractAddresses = (): Record<number, string | undefined> => {
+  const addresses: Record<number, string | undefined> = {};
   const deploymentsDir = path.join(__dirname, "../../../contracts/deployments");
 
   Object.keys(networks).forEach((networkKey) => {
@@ -50,7 +68,7 @@ const loadContractAddresses = () => {
 
     try {
       if (fs.existsSync(deploymentFile)) {
-        const deploymentData = JSON.parse(
+        const deploymentData: DeploymentData = JSON.parse(
           fs.readFileSync(deploymentFile, "utf8"),
         );
         // Support multiple deployment formats
@@ -64,10 +82,11 @@ const loadContractAddresses = () => {
           `No deployment file found for ${network.name} (chainId: ${network.chainId})`,
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const err = error as Error;
       logger.error(`Error loading deployment for ${network.name}:`, {
-        error: error.message,
-        stack: error.stack,
+        error: err.message,
+        stack: err.stack,
       });
     }
   });
@@ -76,7 +95,7 @@ const loadContractAddresses = () => {
 };
 
 // Load contract ABI
-const loadContractABI = () => {
+const loadContractABI = (): unknown[] => {
   try {
     const abiPath = path.join(
       __dirname,
@@ -84,10 +103,11 @@ const loadContractABI = () => {
     );
     const artifact = JSON.parse(fs.readFileSync(abiPath, "utf8"));
     return artifact.abi;
-  } catch (error) {
+  } catch (error: unknown) {
+    const err = error as Error;
     logger.error("Error loading contract ABI:", {
-      error: error.message,
-      stack: error.stack,
+      error: err.message,
+      stack: err.stack,
     });
     throw new Error("Failed to load contract ABI");
   }

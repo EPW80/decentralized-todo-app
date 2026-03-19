@@ -1,7 +1,14 @@
+jest.mock('../../../src/utils/logger', () => ({
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+  stream: { write: jest.fn() },
+  child: jest.fn(),
+}));
+
 const validateEnv = require('../../../src/config/validateEnv');
 const logger = require('../../../src/utils/logger');
-
-jest.mock('../../../src/utils/logger');
 
 describe('Environment Validation', () => {
   let originalEnv;

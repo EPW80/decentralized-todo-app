@@ -8,7 +8,14 @@ const {
   ensureOwnership
 } = require('../../../src/middleware/auth');
 
-jest.mock('../../../src/utils/logger');
+jest.mock('../../../src/utils/logger', () => ({
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+  stream: { write: jest.fn() },
+  child: jest.fn(() => ({ error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() })),
+}));
 
 describe('Auth Middleware', () => {
   let req, res, next;

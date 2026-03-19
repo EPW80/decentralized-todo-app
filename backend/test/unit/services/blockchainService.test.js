@@ -1,5 +1,12 @@
 // Mock dependencies before requiring blockchainService
-jest.mock('../../../src/utils/logger');
+jest.mock('../../../src/utils/logger', () => ({
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+  stream: { write: jest.fn() },
+  child: jest.fn(() => ({ error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() })),
+}));
 jest.mock('../../../src/models/Todo');
 jest.mock('../../../src/config/blockchain', () => ({
   networks: {
@@ -1178,6 +1185,962 @@ describe('BlockchainService', () => {
       expect(() => {
         blockchainService.validateContractEvents(mockContract, 31337);
       }).toThrow(/TaskCreated/);
+    });
+  });
+
+  describe('initialize', () => {
+    beforeEach(() => {
+      blockchainService.providers = {};
+      blockchainService.contracts = {};
+      blockchainService.confirmations = {};
+      blockchainService.initialized = false;
+      blockchainService.heartbeatTimer = null;
+      blockchainService.syncMonitor = null;
+      jest.clearAllMocks();
+    });
+
+    it('should skip networks without RPC URL', async () => {
+      const blockchain = require('../../../src/config/blockchain');
+      const origRpc = blockchain.networks.localhost.rpcUrl;
+      blockchain.networks.localhost.rpcUrl = '';
+
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners').mockResolvedValue();
+      const recoverSpy = jest.spyOn(blockchainService, 'recoverMissedEvents').mockResolvedValue();
+      const heartbeatSpy = jest.spyOn(blockchainService, 'startHeartbeat').mockImplementation();
+
+      await blockchainService.initialize();
+
+      expect(blockchainService.providers[31337]).toBeUndefined();
+      blockchain.networks.localhost.rpcUrl = origRpc;
+      startSpy.mockRestore();
+      recoverSpy.mockRestore();
+      heartbeatSpy.mockRestore();
+    });
+
+    it('should skip networks without contract address', async () => {
+      const blockchain = require('../../../src/config/blockchain');
+      const origAddr = blockchain.contractAddresses[31337];
+      blockchain.contractAddresses[31337] = undefined;
+
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners').mockResolvedValue();
+      const recoverSpy = jest.spyOn(blockchainService, 'recoverMissedEvents').mockResolvedValue();
+      const heartbeatSpy = jest.spyOn(blockchainService, 'startHeartbeat').mockImplementation();
+
+      await blockchainService.initialize();
+
+      expect(blockchainService.contracts[31337]).toBeUndefined();
+      blockchain.contractAddresses[31337] = origAddr;
+      startSpy.mockRestore();
+      recoverSpy.mockRestore();
+      heartbeatSpy.mockRestore();
+    });
+
+    it('should set initialized to true after loop', async () => {
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners').mockResolvedValue();
+      const recoverSpy = jest.spyOn(blockchainService, 'recoverMissedEvents').mockResolvedValue();
+      const heartbeatSpy = jest.spyOn(blockchainService, 'startHeartbeat').mockImplementation();
+      jest.spyOn(blockchainService, 'createResilientProvider').mockReturnValue({
+        getBlockNumber: jest.fn().mockResolvedValue(100),
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+      });
+
+      await blockchainService.initialize();
+
+      expect(blockchainService.initialized).toBe(true);
+      startSpy.mockRestore();
+      recoverSpy.mockRestore();
+      heartbeatSpy.mockRestore();
+    });
+
+    it('should call startEventListeners for valid networks', async () => {
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners').mockResolvedValue();
+      const recoverSpy = jest.spyOn(blockchainService, 'recoverMissedEvents').mockResolvedValue();
+      const heartbeatSpy = jest.spyOn(blockchainService, 'startHeartbeat').mockImplementation();
+      jest.spyOn(blockchainService, 'createResilientProvider').mockReturnValue({
+        getBlockNumber: jest.fn().mockResolvedValue(100),
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+      });
+
+      await blockchainService.initialize();
+
+      expect(startSpy).toHaveBeenCalledWith(31337);
+      startSpy.mockRestore();
+      recoverSpy.mockRestore();
+      heartbeatSpy.mockRestore();
+    });
+
+    it('should call recoverMissedEvents for valid networks', async () => {
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners').mockResolvedValue();
+      const recoverSpy = jest.spyOn(blockchainService, 'recoverMissedEvents').mockResolvedValue();
+      const heartbeatSpy = jest.spyOn(blockchainService, 'startHeartbeat').mockImplementation();
+      jest.spyOn(blockchainService, 'createResilientProvider').mockReturnValue({
+        getBlockNumber: jest.fn().mockResolvedValue(100),
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+      });
+
+      await blockchainService.initialize();
+
+      expect(recoverSpy).toHaveBeenCalledWith(31337);
+      startSpy.mockRestore();
+      recoverSpy.mockRestore();
+      heartbeatSpy.mockRestore();
+    });
+
+    it('should start heartbeat monitoring', async () => {
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners').mockResolvedValue();
+      const recoverSpy = jest.spyOn(blockchainService, 'recoverMissedEvents').mockResolvedValue();
+      const heartbeatSpy = jest.spyOn(blockchainService, 'startHeartbeat').mockImplementation();
+      jest.spyOn(blockchainService, 'createResilientProvider').mockReturnValue({
+        getBlockNumber: jest.fn().mockResolvedValue(100),
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+      });
+
+      await blockchainService.initialize();
+
+      expect(heartbeatSpy).toHaveBeenCalled();
+      startSpy.mockRestore();
+      recoverSpy.mockRestore();
+      heartbeatSpy.mockRestore();
+    });
+
+    it('should handle individual network errors without crashing', async () => {
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners').mockResolvedValue();
+      const recoverSpy = jest.spyOn(blockchainService, 'recoverMissedEvents').mockResolvedValue();
+      const heartbeatSpy = jest.spyOn(blockchainService, 'startHeartbeat').mockImplementation();
+      jest.spyOn(blockchainService, 'createResilientProvider').mockImplementation(() => {
+        throw new Error('RPC connection failed');
+      });
+
+      await blockchainService.initialize();
+
+      // Should still set initialized to true
+      expect(blockchainService.initialized).toBe(true);
+      const logger = require('../../../src/utils/logger');
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Error initializing'),
+        expect.any(Object)
+      );
+      startSpy.mockRestore();
+      recoverSpy.mockRestore();
+      heartbeatSpy.mockRestore();
+    });
+  });
+
+  describe('checkChainHealth', () => {
+    beforeEach(() => {
+      blockchainService.providers = {};
+      blockchainService.contracts = {};
+      blockchainService.consecutiveFailures = {};
+      blockchainService.eventListenersActive = {};
+      blockchainService.lastProcessedBlock = {};
+      blockchainService.lastHeartbeat = {};
+      blockchainService.maxConsecutiveFailures = 3;
+      jest.clearAllMocks();
+    });
+
+    it('should skip when no provider exists', async () => {
+      await blockchainService.checkChainHealth(31337);
+
+      const logger = require('../../../src/utils/logger');
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Health check skipped')
+      );
+    });
+
+    it('should detect inactive event listeners', async () => {
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(100) };
+      const mockContract = {};
+      blockchainService.providers[31337] = mockProvider;
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.eventListenersActive[31337] = false;
+      blockchainService.lastProcessedBlock[31337] = 99;
+
+      const restartSpy = jest.spyOn(blockchainService, 'restartEventListeners').mockResolvedValue();
+
+      await blockchainService.checkChainHealth(31337);
+
+      expect(blockchainService.consecutiveFailures[31337]).toBe(1);
+      restartSpy.mockRestore();
+    });
+
+    it('should detect stale block processing', async () => {
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(300) };
+      const mockContract = {};
+      blockchainService.providers[31337] = mockProvider;
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.eventListenersActive[31337] = true;
+      blockchainService.lastProcessedBlock[31337] = 100; // 200 blocks behind
+
+      const restartSpy = jest.spyOn(blockchainService, 'restartEventListeners').mockResolvedValue();
+
+      await blockchainService.checkChainHealth(31337);
+
+      expect(blockchainService.consecutiveFailures[31337]).toBe(1);
+      restartSpy.mockRestore();
+    });
+
+    it('should reset failures on healthy check', async () => {
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(100) };
+      const mockContract = {};
+      blockchainService.providers[31337] = mockProvider;
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.eventListenersActive[31337] = true;
+      blockchainService.lastProcessedBlock[31337] = 99;
+      blockchainService.consecutiveFailures[31337] = 2;
+
+      await blockchainService.checkChainHealth(31337);
+
+      expect(blockchainService.consecutiveFailures[31337]).toBe(0);
+      expect(blockchainService.lastHeartbeat[31337]).toBeInstanceOf(Date);
+    });
+
+    it('should restart listeners after max consecutive failures', async () => {
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(100) };
+      const mockContract = {};
+      blockchainService.providers[31337] = mockProvider;
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.eventListenersActive[31337] = false;
+      blockchainService.consecutiveFailures[31337] = 2; // Will become 3
+
+      const restartSpy = jest.spyOn(blockchainService, 'restartEventListeners').mockResolvedValue();
+
+      await blockchainService.checkChainHealth(31337);
+
+      expect(restartSpy).toHaveBeenCalledWith(31337);
+      expect(blockchainService.consecutiveFailures[31337]).toBe(0);
+      restartSpy.mockRestore();
+    });
+
+    it('should handle provider error as failure', async () => {
+      const mockProvider = {
+        getBlockNumber: jest.fn().mockRejectedValue(new Error('Provider timeout'))
+      };
+      const mockContract = {};
+      blockchainService.providers[31337] = mockProvider;
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.consecutiveFailures[31337] = 0;
+
+      await blockchainService.checkChainHealth(31337);
+
+      expect(blockchainService.consecutiveFailures[31337]).toBe(1);
+    });
+
+    it('should restart on error when failures reach threshold', async () => {
+      const mockProvider = {
+        getBlockNumber: jest.fn().mockRejectedValue(new Error('timeout'))
+      };
+      const mockContract = {};
+      blockchainService.providers[31337] = mockProvider;
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.consecutiveFailures[31337] = 2;
+
+      const restartSpy = jest.spyOn(blockchainService, 'restartEventListeners').mockResolvedValue();
+
+      await blockchainService.checkChainHealth(31337);
+
+      expect(restartSpy).toHaveBeenCalledWith(31337);
+      restartSpy.mockRestore();
+    });
+  });
+
+  describe('reconnectProvider', () => {
+    beforeEach(() => {
+      blockchainService.reconnectAttempts = {};
+      blockchainService.maxReconnectAttempts = 5;
+      blockchainService.reconnectDelay = 100; // Short delay for testing
+      blockchainService.providers = {};
+      blockchainService.contracts = {};
+      jest.clearAllMocks();
+    });
+
+    it('should return when max attempts reached', async () => {
+      blockchainService.reconnectAttempts[31337] = 5;
+
+      await blockchainService.reconnectProvider(31337, 'NETWORK_ERROR');
+
+      const logger = require('../../../src/utils/logger');
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Max reconnection attempts'),
+        expect.any(Object)
+      );
+    });
+
+    it('should increment reconnectAttempts', async () => {
+      jest.useFakeTimers();
+
+      blockchainService.reconnectProvider(31337, 'NETWORK_ERROR');
+
+      expect(blockchainService.reconnectAttempts[31337]).toBe(1);
+      jest.useRealTimers();
+    });
+
+    it('should use minimal delay for FILTER_ERROR', async () => {
+      jest.useFakeTimers();
+      blockchainService.reconnectDelay = 5000;
+
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners').mockResolvedValue();
+
+      blockchainService.reconnectProvider(31337, 'FILTER_ERROR');
+
+      // For FILTER_ERROR, delay should be min(5000 * 1, 1000) = 1000ms
+      jest.advanceTimersByTime(999);
+      // Not yet triggered
+
+      jest.advanceTimersByTime(2);
+      // Now triggered
+
+      jest.useRealTimers();
+      startSpy.mockRestore();
+    });
+  });
+
+  describe('resyncFromBlock', () => {
+    beforeEach(() => {
+      jest.restoreAllMocks();
+      blockchainService.providers = {};
+      blockchainService.contracts = {};
+      jest.clearAllMocks();
+    });
+
+    it('should return early if contract not found', async () => {
+      await blockchainService.resyncFromBlock(31337, 100);
+
+      const logger = require('../../../src/utils/logger');
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Contract not found')
+      );
+    });
+
+    it('should query all event types and process them', async () => {
+      const mockFilter = {
+        TaskCreated: jest.fn(),
+        TaskCompleted: jest.fn(),
+        TaskDeleted: jest.fn(),
+        TaskRestored: jest.fn(),
+        TaskUpdated: jest.fn(),
+      };
+      const mockContract = {
+        queryFilter: jest.fn().mockResolvedValue([]),
+        filters: mockFilter,
+      };
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(200) };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      await blockchainService.resyncFromBlock(31337, 100);
+
+      expect(mockContract.queryFilter).toHaveBeenCalledTimes(5);
+      expect(mockProvider.getBlockNumber).toHaveBeenCalled();
+    });
+
+    it('should process created events by calling syncTaskCreated', async () => {
+      const mockEvent = {
+        args: [1n, '0xOwner', 'Test task', 1700000000n, 0n],
+        transactionHash: '0xhash',
+      };
+      const mockFilter = {
+        TaskCreated: jest.fn(),
+        TaskCompleted: jest.fn(),
+        TaskDeleted: jest.fn(),
+        TaskRestored: jest.fn(),
+        TaskUpdated: jest.fn(),
+      };
+      const mockContract = {
+        queryFilter: jest.fn()
+          .mockResolvedValueOnce([mockEvent]) // TaskCreated
+          .mockResolvedValueOnce([])           // TaskCompleted
+          .mockResolvedValueOnce([])           // TaskDeleted
+          .mockResolvedValueOnce([])           // TaskRestored
+          .mockResolvedValueOnce([]),          // TaskUpdated
+        filters: mockFilter,
+      };
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(200) };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      const syncSpy = jest.spyOn(blockchainService, 'syncTaskCreated').mockResolvedValue();
+
+      await blockchainService.resyncFromBlock(31337, 100);
+
+      expect(syncSpy).toHaveBeenCalledWith(
+        31337, 1n, '0xOwner', 'Test task', 1700000000n, '0xhash', 0n
+      );
+      syncSpy.mockRestore();
+    });
+
+    it('should process completed events', async () => {
+      const mockEvent = { args: [1n, '0xOwner', 1700000000n] };
+      const mockFilter = {
+        TaskCreated: jest.fn(),
+        TaskCompleted: jest.fn(),
+        TaskDeleted: jest.fn(),
+        TaskRestored: jest.fn(),
+        TaskUpdated: jest.fn(),
+      };
+      const mockContract = {
+        queryFilter: jest.fn()
+          .mockResolvedValueOnce([])           // TaskCreated
+          .mockResolvedValueOnce([mockEvent])  // TaskCompleted
+          .mockResolvedValueOnce([])           // TaskDeleted
+          .mockResolvedValueOnce([])           // TaskRestored
+          .mockResolvedValueOnce([]),          // TaskUpdated
+        filters: mockFilter,
+      };
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(200) };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      const syncSpy = jest.spyOn(blockchainService, 'syncTaskCompleted').mockResolvedValue();
+
+      await blockchainService.resyncFromBlock(31337, 100);
+
+      expect(syncSpy).toHaveBeenCalledWith(31337, 1n, 1700000000n);
+      syncSpy.mockRestore();
+    });
+
+    it('should process deleted events', async () => {
+      const mockEvent = { args: [1n] };
+      const mockFilter = {
+        TaskCreated: jest.fn(),
+        TaskCompleted: jest.fn(),
+        TaskDeleted: jest.fn(),
+        TaskRestored: jest.fn(),
+        TaskUpdated: jest.fn(),
+      };
+      const mockContract = {
+        queryFilter: jest.fn()
+          .mockResolvedValueOnce([])           // TaskCreated
+          .mockResolvedValueOnce([])           // TaskCompleted
+          .mockResolvedValueOnce([mockEvent])  // TaskDeleted
+          .mockResolvedValueOnce([])           // TaskRestored
+          .mockResolvedValueOnce([]),          // TaskUpdated
+        filters: mockFilter,
+      };
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(200) };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      const syncSpy = jest.spyOn(blockchainService, 'syncTaskDeleted').mockResolvedValue();
+
+      await blockchainService.resyncFromBlock(31337, 100);
+
+      expect(syncSpy).toHaveBeenCalledWith(31337, 1n);
+      syncSpy.mockRestore();
+    });
+
+    it('should process restored events', async () => {
+      const mockEvent = { args: [2n] };
+      const mockFilter = {
+        TaskCreated: jest.fn(),
+        TaskCompleted: jest.fn(),
+        TaskDeleted: jest.fn(),
+        TaskRestored: jest.fn(),
+        TaskUpdated: jest.fn(),
+      };
+      const mockContract = {
+        queryFilter: jest.fn()
+          .mockResolvedValueOnce([])           // TaskCreated
+          .mockResolvedValueOnce([])           // TaskCompleted
+          .mockResolvedValueOnce([])           // TaskDeleted
+          .mockResolvedValueOnce([mockEvent])  // TaskRestored
+          .mockResolvedValueOnce([]),          // TaskUpdated
+        filters: mockFilter,
+      };
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(200) };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      const syncSpy = jest.spyOn(blockchainService, 'syncTaskRestored').mockResolvedValue();
+
+      await blockchainService.resyncFromBlock(31337, 100);
+
+      expect(syncSpy).toHaveBeenCalledWith(31337, 2n);
+      syncSpy.mockRestore();
+    });
+
+    it('should process updated events', async () => {
+      const mockEvent = { args: [1n, '0xOwner', 'old desc', 'new desc'] };
+      const mockFilter = {
+        TaskCreated: jest.fn(),
+        TaskCompleted: jest.fn(),
+        TaskDeleted: jest.fn(),
+        TaskRestored: jest.fn(),
+        TaskUpdated: jest.fn(),
+      };
+      const mockContract = {
+        queryFilter: jest.fn()
+          .mockResolvedValueOnce([])           // TaskCreated
+          .mockResolvedValueOnce([])           // TaskCompleted
+          .mockResolvedValueOnce([])           // TaskDeleted
+          .mockResolvedValueOnce([])           // TaskRestored
+          .mockResolvedValueOnce([mockEvent]), // TaskUpdated
+        filters: mockFilter,
+      };
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(200) };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      const syncSpy = jest.spyOn(blockchainService, 'syncTaskUpdated').mockResolvedValue();
+
+      await blockchainService.resyncFromBlock(31337, 100);
+
+      expect(syncSpy).toHaveBeenCalledWith(31337, 1n, 'old desc', 'new desc');
+      syncSpy.mockRestore();
+    });
+
+    it('should handle errors gracefully', async () => {
+      const mockContract = {
+        queryFilter: jest.fn().mockRejectedValue(new Error('query failed')),
+        filters: { TaskCreated: jest.fn() },
+      };
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(200) };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      await blockchainService.resyncFromBlock(31337, 100);
+
+      const logger = require('../../../src/utils/logger');
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Error resyncing'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('recoverMissedEvents', () => {
+    beforeEach(() => {
+      jest.restoreAllMocks();
+      blockchainService.providers = {};
+      blockchainService.contracts = {};
+      jest.clearAllMocks();
+    });
+
+    it('should return early if contract or provider missing', async () => {
+      await blockchainService.recoverMissedEvents(31337);
+
+      const logger = require('../../../src/utils/logger');
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Cannot recover events')
+      );
+    });
+
+    it('should skip recovery when within 10 blocks', async () => {
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(5) };
+      const mockContract = {};
+      blockchainService.providers[31337] = mockProvider;
+      blockchainService.contracts[31337] = mockContract;
+
+      // Mock Todo.findOne to return null (no previous sync)
+      // With currentBlock=5, defaultStartBlock = max(0, 5 - 50400) = 0
+      // currentBlock - fromBlock = 5 - 0 = 5 < 10, so skip
+      const Todo = require('../../../src/models/Todo');
+      Todo.findOne.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null),
+          }),
+        }),
+      });
+
+      const resyncSpy = jest.spyOn(blockchainService, 'resyncFromBlock').mockResolvedValue();
+
+      await blockchainService.recoverMissedEvents(31337);
+
+      const logger = require('../../../src/utils/logger');
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining('up to date')
+      );
+      expect(resyncSpy).not.toHaveBeenCalled();
+      resyncSpy.mockRestore();
+    });
+
+    it('should call resyncFromBlock when behind', async () => {
+      const mockProvider = { getBlockNumber: jest.fn().mockResolvedValue(100000) };
+      const mockContract = {};
+      blockchainService.providers[31337] = mockProvider;
+      blockchainService.contracts[31337] = mockContract;
+
+      const Todo = require('../../../src/models/Todo');
+      Todo.findOne.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null), // No previous sync
+          }),
+        }),
+      });
+
+      const resyncSpy = jest.spyOn(blockchainService, 'resyncFromBlock').mockResolvedValue();
+
+      await blockchainService.recoverMissedEvents(31337);
+
+      expect(resyncSpy).toHaveBeenCalledWith(31337, expect.any(Number));
+      resyncSpy.mockRestore();
+    });
+
+    it('should handle errors without throwing', async () => {
+      const mockProvider = { getBlockNumber: jest.fn().mockRejectedValue(new Error('RPC down')) };
+      const mockContract = {};
+      blockchainService.providers[31337] = mockProvider;
+      blockchainService.contracts[31337] = mockContract;
+
+      const Todo = require('../../../src/models/Todo');
+      Todo.findOne.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null),
+          }),
+        }),
+      });
+
+      // Should not throw
+      await blockchainService.recoverMissedEvents(31337);
+
+      const logger = require('../../../src/utils/logger');
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Error recovering'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('startEventListeners', () => {
+    beforeEach(() => {
+      jest.restoreAllMocks();
+      blockchainService.providers = {};
+      blockchainService.contracts = {};
+      blockchainService.eventHandlers = {};
+      blockchainService.eventListenersActive = {};
+      blockchainService.lastProcessedBlock = {};
+      jest.clearAllMocks();
+    });
+
+    it('should return early if no contract or provider', async () => {
+      await blockchainService.startEventListeners(31337);
+
+      // Should not throw, no listeners set up
+      expect(blockchainService.eventListenersActive[31337]).toBeUndefined();
+    });
+
+    it('should mark listeners as active', async () => {
+      const mockContract = {
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+        interface: {
+          events: {
+            'TaskCreated(uint256,address,string,uint256,uint256)': {},
+            'TaskCompleted(uint256,address,uint256)': {},
+            'TaskDeleted(uint256,address,uint256)': {},
+            'TaskRestored(uint256,address,uint256)': {},
+            'TaskUpdated(uint256,address,string,string,uint256)': {},
+          },
+          getEvent: jest.fn().mockReturnValue({}),
+        },
+      };
+      const mockProvider = {
+        on: jest.fn(),
+        off: jest.fn(),
+        getBlockNumber: jest.fn().mockResolvedValue(100),
+      };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      await blockchainService.startEventListeners(31337);
+
+      expect(blockchainService.eventListenersActive[31337]).toBe(true);
+    });
+
+    it('should initialize lastProcessedBlock from provider', async () => {
+      const mockContract = {
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+        interface: {
+          events: {
+            'TaskCreated(uint256,address,string,uint256,uint256)': {},
+            'TaskCompleted(uint256,address,uint256)': {},
+            'TaskDeleted(uint256,address,uint256)': {},
+            'TaskRestored(uint256,address,uint256)': {},
+            'TaskUpdated(uint256,address,string,string,uint256)': {},
+          },
+          getEvent: jest.fn().mockReturnValue({}),
+        },
+      };
+      const mockProvider = {
+        on: jest.fn(),
+        off: jest.fn(),
+        getBlockNumber: jest.fn().mockResolvedValue(500),
+      };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      await blockchainService.startEventListeners(31337);
+
+      expect(blockchainService.lastProcessedBlock[31337]).toBe(500);
+    });
+
+    it('should set lastProcessedBlock to 0 on getBlockNumber failure', async () => {
+      const mockContract = {
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+        interface: {
+          events: {
+            'TaskCreated(uint256,address,string,uint256,uint256)': {},
+            'TaskCompleted(uint256,address,uint256)': {},
+            'TaskDeleted(uint256,address,uint256)': {},
+            'TaskRestored(uint256,address,uint256)': {},
+            'TaskUpdated(uint256,address,string,string,uint256)': {},
+          },
+          getEvent: jest.fn().mockReturnValue({}),
+        },
+      };
+      const mockProvider = {
+        on: jest.fn(),
+        off: jest.fn(),
+        getBlockNumber: jest.fn().mockRejectedValue(new Error('RPC error')),
+      };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      await blockchainService.startEventListeners(31337);
+
+      expect(blockchainService.lastProcessedBlock[31337]).toBe(0);
+    });
+
+    it('should register event handlers on contract', async () => {
+      const mockContract = {
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+        interface: {
+          events: {
+            'TaskCreated(uint256,address,string,uint256,uint256)': {},
+            'TaskCompleted(uint256,address,uint256)': {},
+            'TaskDeleted(uint256,address,uint256)': {},
+            'TaskRestored(uint256,address,uint256)': {},
+            'TaskUpdated(uint256,address,string,string,uint256)': {},
+          },
+          getEvent: jest.fn().mockReturnValue({}),
+        },
+      };
+      const mockProvider = {
+        on: jest.fn(),
+        off: jest.fn(),
+        getBlockNumber: jest.fn().mockResolvedValue(100),
+      };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      await blockchainService.startEventListeners(31337);
+
+      // 5 contract events + should have been registered
+      expect(mockContract.on).toHaveBeenCalledWith('TaskCreated', expect.any(Function));
+      expect(mockContract.on).toHaveBeenCalledWith('TaskCompleted', expect.any(Function));
+      expect(mockContract.on).toHaveBeenCalledWith('TaskDeleted', expect.any(Function));
+      expect(mockContract.on).toHaveBeenCalledWith('TaskRestored', expect.any(Function));
+      expect(mockContract.on).toHaveBeenCalledWith('TaskUpdated', expect.any(Function));
+    });
+
+    it('should register provider error and block handlers', async () => {
+      const mockContract = {
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+        interface: {
+          events: {
+            'TaskCreated(uint256,address,string,uint256,uint256)': {},
+            'TaskCompleted(uint256,address,uint256)': {},
+            'TaskDeleted(uint256,address,uint256)': {},
+            'TaskRestored(uint256,address,uint256)': {},
+            'TaskUpdated(uint256,address,string,string,uint256)': {},
+          },
+          getEvent: jest.fn().mockReturnValue({}),
+        },
+      };
+      const mockProvider = {
+        on: jest.fn(),
+        off: jest.fn(),
+        getBlockNumber: jest.fn().mockResolvedValue(100),
+      };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      await blockchainService.startEventListeners(31337);
+
+      expect(mockProvider.on).toHaveBeenCalledWith('error', expect.any(Function));
+      expect(mockProvider.on).toHaveBeenCalledWith('block', expect.any(Function));
+    });
+
+    it('should remove old handlers before setting new ones', async () => {
+      const mockContract = {
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+        interface: {
+          events: {
+            'TaskCreated(uint256,address,string,uint256,uint256)': {},
+            'TaskCompleted(uint256,address,uint256)': {},
+            'TaskDeleted(uint256,address,uint256)': {},
+            'TaskRestored(uint256,address,uint256)': {},
+            'TaskUpdated(uint256,address,string,string,uint256)': {},
+          },
+          getEvent: jest.fn().mockReturnValue({}),
+        },
+      };
+      const mockProvider = {
+        on: jest.fn(),
+        off: jest.fn(),
+        getBlockNumber: jest.fn().mockResolvedValue(100),
+      };
+
+      // Set up existing handlers
+      blockchainService.eventHandlers[31337] = {
+        taskCreated: jest.fn(),
+        taskCompleted: jest.fn(),
+        taskDeleted: jest.fn(),
+        taskRestored: jest.fn(),
+        taskUpdated: jest.fn(),
+        providerError: jest.fn(),
+        blockUpdate: jest.fn(),
+      };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      await blockchainService.startEventListeners(31337);
+
+      // Should have called off() for old handlers
+      expect(mockContract.off).toHaveBeenCalledWith('TaskCreated', expect.any(Function));
+      expect(mockContract.off).toHaveBeenCalledWith('TaskCompleted', expect.any(Function));
+      expect(mockProvider.off).toHaveBeenCalledWith('error', expect.any(Function));
+      expect(mockProvider.off).toHaveBeenCalledWith('block', expect.any(Function));
+    });
+
+    it('should store handler references for cleanup', async () => {
+      const mockContract = {
+        on: jest.fn(),
+        off: jest.fn(),
+        removeAllListeners: jest.fn(),
+        interface: {
+          events: {
+            'TaskCreated(uint256,address,string,uint256,uint256)': {},
+            'TaskCompleted(uint256,address,uint256)': {},
+            'TaskDeleted(uint256,address,uint256)': {},
+            'TaskRestored(uint256,address,uint256)': {},
+            'TaskUpdated(uint256,address,string,string,uint256)': {},
+          },
+          getEvent: jest.fn().mockReturnValue({}),
+        },
+      };
+      const mockProvider = {
+        on: jest.fn(),
+        off: jest.fn(),
+        getBlockNumber: jest.fn().mockResolvedValue(100),
+      };
+
+      blockchainService.contracts[31337] = mockContract;
+      blockchainService.providers[31337] = mockProvider;
+
+      await blockchainService.startEventListeners(31337);
+
+      expect(blockchainService.eventHandlers[31337]).toBeDefined();
+      expect(blockchainService.eventHandlers[31337].taskCreated).toBeDefined();
+      expect(blockchainService.eventHandlers[31337].providerError).toBeDefined();
+      expect(blockchainService.eventHandlers[31337].blockUpdate).toBeDefined();
+    });
+  });
+
+  describe('restartEventListeners', () => {
+    beforeEach(() => {
+      jest.restoreAllMocks();
+      blockchainService.contracts = {};
+      blockchainService.providers = {};
+      jest.clearAllMocks();
+    });
+
+    it('should remove all listeners and restart', async () => {
+      const mockContract = { removeAllListeners: jest.fn() };
+      blockchainService.contracts[31337] = mockContract;
+
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners').mockResolvedValue();
+      const recoverSpy = jest.spyOn(blockchainService, 'recoverMissedEvents').mockResolvedValue();
+
+      await blockchainService.restartEventListeners(31337);
+
+      expect(mockContract.removeAllListeners).toHaveBeenCalled();
+      expect(startSpy).toHaveBeenCalledWith(31337);
+      expect(recoverSpy).toHaveBeenCalledWith(31337);
+      startSpy.mockRestore();
+      recoverSpy.mockRestore();
+    });
+
+    it('should attempt full reconnection if restart fails', async () => {
+      const mockContract = { removeAllListeners: jest.fn() };
+      blockchainService.contracts[31337] = mockContract;
+
+      const startSpy = jest.spyOn(blockchainService, 'startEventListeners')
+        .mockRejectedValue(new Error('start failed'));
+      const reconnectSpy = jest.spyOn(blockchainService, 'reconnectProvider').mockResolvedValue();
+
+      await blockchainService.restartEventListeners(31337);
+
+      expect(reconnectSpy).toHaveBeenCalledWith(31337, 'HEALTH_CHECK_FAILURE');
+      startSpy.mockRestore();
+      reconnectSpy.mockRestore();
+    });
+  });
+
+  describe('performHealthCheck', () => {
+    beforeEach(() => {
+      jest.restoreAllMocks();
+      jest.clearAllMocks();
+    });
+
+    it('should check health on all active chains', async () => {
+      blockchainService.providers = { '31337': {}, '1': {} };
+      const checkSpy = jest.spyOn(blockchainService, 'checkChainHealth').mockResolvedValue();
+
+      await blockchainService.performHealthCheck();
+
+      expect(checkSpy).toHaveBeenCalledWith(31337);
+      expect(checkSpy).toHaveBeenCalledWith(1);
+      checkSpy.mockRestore();
+    });
+
+    it('should handle errors for individual chains', async () => {
+      blockchainService.providers = { '31337': {} };
+      const checkSpy = jest.spyOn(blockchainService, 'checkChainHealth')
+        .mockRejectedValue(new Error('check failed'));
+
+      await blockchainService.performHealthCheck();
+
+      const logger = require('../../../src/utils/logger');
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Health check failed'),
+        expect.any(Object)
+      );
+      checkSpy.mockRestore();
     });
   });
 

@@ -4,13 +4,14 @@
  * Fails fast if critical configuration is missing or invalid
  */
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const logger = require("../utils/logger");
 
-const validateEnv = () => {
-  const errors = [];
+const validateEnv = (): boolean => {
+  const errors: string[] = [];
 
   // Required environment variables
-  const requiredVars = ["MONGODB_URI", "JWT_SECRET"];
+  const requiredVars: string[] = ["MONGODB_URI", "JWT_SECRET"];
 
   // Check for missing variables
   requiredVars.forEach((varName) => {
@@ -28,7 +29,7 @@ const validateEnv = () => {
     }
 
     // Check for common weak values
-    const weakSecrets = [
+    const weakSecrets: string[] = [
       "your_super_secret_jwt_key_change_this_in_production",
       "secret",
       "jwt_secret",
@@ -54,9 +55,9 @@ const validateEnv = () => {
   // Validate PORT if set
   if (
     process.env.PORT &&
-    (isNaN(process.env.PORT) ||
-      process.env.PORT < 1 ||
-      process.env.PORT > 65535)
+    (isNaN(Number(process.env.PORT)) ||
+      Number(process.env.PORT) < 1 ||
+      Number(process.env.PORT) > 65535)
   ) {
     errors.push("PORT must be a valid number between 1 and 65535");
   }
@@ -76,7 +77,7 @@ const validateEnv = () => {
   // Report errors
   if (errors.length > 0) {
     logger.error("\n❌ ENVIRONMENT VALIDATION FAILED:\n");
-    errors.forEach((error) => {
+    errors.forEach((error: string) => {
       logger.error(`   • ${error}`);
     });
     logger.error(

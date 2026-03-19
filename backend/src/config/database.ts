@@ -1,11 +1,13 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const logger = require("../utils/logger");
 
 /**
  * Sanitize MongoDB connection string for logging
  * Removes credentials and sensitive connection details
  */
-const sanitizeMongoURI = (uri) => {
+const sanitizeMongoURI = (uri: string): string => {
   if (!uri) return "[NO URI]";
   return uri.replace(
     /mongodb(\+srv)?:\/\/([^@]+@)?([^/]+)/g,
@@ -13,7 +15,7 @@ const sanitizeMongoURI = (uri) => {
   );
 };
 
-const connectDB = async () => {
+const connectDB = async (): Promise<mongoose.Connection> => {
   try {
     const mongoURI =
       process.env.MONGODB_URI || "mongodb://localhost:27017/decentralized-todo";
@@ -26,7 +28,7 @@ const connectDB = async () => {
 
     await mongoose.connect(mongoURI, options);
 
-    mongoose.connection.on("error", (err) => {
+    mongoose.connection.on("error", (err: Error) => {
       const sanitizedError = err.message
         ? sanitizeMongoURI(err.message)
         : "Connection error";
@@ -42,9 +44,10 @@ const connectDB = async () => {
     });
 
     return mongoose.connection;
-  } catch (error) {
-    const sanitizedError = error.message
-      ? sanitizeMongoURI(error.message)
+  } catch (error: unknown) {
+    const err = error as Error;
+    const sanitizedError = err.message
+      ? sanitizeMongoURI(err.message)
       : "Connection failed";
     logger.error("Error connecting to MongoDB:", { error: sanitizedError });
     throw new Error("Database connection failed");

@@ -1,5 +1,12 @@
 // Mock dependencies before requiring SyncMonitor
-jest.mock('../../../src/utils/logger');
+jest.mock('../../../src/utils/logger', () => ({
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+  stream: { write: jest.fn() },
+  child: jest.fn(() => ({ error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() })),
+}));
 jest.mock('../../../src/models/Todo');
 
 const logger = require('../../../src/utils/logger');

@@ -1,9 +1,16 @@
+jest.mock('mongoose');
+jest.mock('../../../src/utils/logger', () => ({
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+  stream: { write: jest.fn() },
+  child: jest.fn(),
+}));
+
 const mongoose = require('mongoose');
 const connectDB = require('../../../src/config/database');
 const logger = require('../../../src/utils/logger');
-
-jest.mock('mongoose');
-jest.mock('../../../src/utils/logger');
 
 describe('Database Connection', () => {
   let originalEnv;

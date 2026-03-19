@@ -1,10 +1,17 @@
-const requestLogger = require('../../../src/middleware/requestLogger');
-const logger = require('../../../src/utils/logger');
-
-jest.mock('../../../src/utils/logger');
+jest.mock('../../../src/utils/logger', () => ({
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+  stream: { write: jest.fn() },
+  child: jest.fn(),
+}));
 jest.mock('uuid', () => ({
   v4: jest.fn(() => 'test-uuid-1234')
 }));
+
+const requestLogger = require('../../../src/middleware/requestLogger');
+const logger = require('../../../src/utils/logger');
 
 describe('Request Logger Middleware', () => {
   let req, res, next;

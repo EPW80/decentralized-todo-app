@@ -261,6 +261,168 @@ describe('Todo Model', () => {
     });
   });
 
+  describe('updateDescription', () => {
+    it('should update description and save', async () => {
+      const mockTodo = {
+        description: 'Old description',
+        lastSyncedAt: null,
+        save: jest.fn().mockResolvedValue(true),
+      };
+      Object.setPrototypeOf(mockTodo, Todo.prototype);
+
+      await Todo.prototype.updateDescription.call(mockTodo, 'New description');
+
+      expect(mockTodo.description).toBe('New description');
+      expect(mockTodo.lastSyncedAt).toBeInstanceOf(Date);
+      expect(mockTodo.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('findByOwnerWithFilters', () => {
+    let mockSort;
+    let mockFind;
+
+    beforeEach(() => {
+      mockSort = jest.fn().mockResolvedValue([]);
+      mockFind = jest.fn().mockReturnValue({ sort: mockSort });
+      Todo.find = mockFind;
+      jest.clearAllMocks();
+    });
+
+    it('should lowercase owner address', () => {
+      Todo.findByOwnerWithFilters('0xABCDEF1234567890123456789012345678901234');
+
+      expect(mockFind).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: '0xabcdef1234567890123456789012345678901234',
+        })
+      );
+    });
+
+    it('should exclude deleted by default', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890');
+
+      expect(mockFind).toHaveBeenCalledWith(
+        expect.objectContaining({ deleted: false })
+      );
+    });
+
+    it('should include deleted when includeDeleted is true', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        includeDeleted: true,
+      });
+
+      const query = mockFind.mock.calls[0][0];
+      expect(query.deleted).toBeUndefined();
+    });
+
+    it('should exclude completed when includeCompleted is false', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        includeCompleted: false,
+      });
+
+      expect(mockFind).toHaveBeenCalledWith(
+        expect.objectContaining({ completed: false })
+      );
+    });
+
+    it('should apply search filter as regex', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        search: 'test query',
+      });
+
+      expect(mockFind).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: { $regex: 'test query', $options: 'i' },
+        })
+      );
+    });
+
+    it('should apply overdue dueFilter', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        dueFilter: 'overdue',
+      });
+
+      const query = mockFind.mock.calls[0][0];
+      expect(query.dueDate).toBeDefined();
+      expect(query.dueDate.$lt).toBeInstanceOf(Date);
+      expect(query.dueDate.$ne).toBeNull();
+      expect(query.completed).toBe(false);
+    });
+
+    it('should apply today dueFilter', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        dueFilter: 'today',
+      });
+
+      const query = mockFind.mock.calls[0][0];
+      expect(query.dueDate).toBeDefined();
+      expect(query.dueDate.$gte).toBeInstanceOf(Date);
+      expect(query.dueDate.$lt).toBeInstanceOf(Date);
+    });
+
+    it('should apply week dueFilter', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        dueFilter: 'week',
+      });
+
+      const query = mockFind.mock.calls[0][0];
+      expect(query.dueDate).toBeDefined();
+      expect(query.dueDate.$gte).toBeInstanceOf(Date);
+      expect(query.dueDate.$lt).toBeInstanceOf(Date);
+      // Week end should be ~7 days from today start
+      const daysDiff = (query.dueDate.$lt - query.dueDate.$gte) / (1000 * 60 * 60 * 24);
+      expect(daysDiff).toBe(7);
+    });
+
+    it('should not apply dueFilter when set to all', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        dueFilter: 'all',
+      });
+
+      const query = mockFind.mock.calls[0][0];
+      expect(query.dueDate).toBeUndefined();
+    });
+
+    it('should sort by newest by default', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890');
+
+      expect(mockSort).toHaveBeenCalledWith({ blockchainCreatedAt: -1 });
+    });
+
+    it('should sort by oldest', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        sort: 'oldest',
+      });
+
+      expect(mockSort).toHaveBeenCalledWith({ blockchainCreatedAt: 1 });
+    });
+
+    it('should sort by dueDate', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        sort: 'dueDate',
+      });
+
+      expect(mockSort).toHaveBeenCalledWith({ dueDate: 1, blockchainCreatedAt: -1 });
+    });
+
+    it('should sort alphabetically', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        sort: 'alpha',
+      });
+
+      expect(mockSort).toHaveBeenCalledWith({ description: 1 });
+    });
+
+    it('should sort by newest explicitly', () => {
+      Todo.findByOwnerWithFilters('0x1234567890123456789012345678901234567890', {
+        sort: 'newest',
+      });
+
+      expect(mockSort).toHaveBeenCalledWith({ blockchainCreatedAt: -1 });
+    });
+  });
+
   describe('Pre-save Middleware', () => {
     it('should have pre-save middleware configured', () => {
       const preSaveHooks = Todo.schema.s.hooks._pres.get('save');

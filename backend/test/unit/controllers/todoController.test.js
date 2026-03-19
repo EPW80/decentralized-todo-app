@@ -5,7 +5,14 @@ const blockchainService = require('../../../src/services/blockchainService');
 // Mock dependencies
 jest.mock('../../../src/models/Todo');
 jest.mock('../../../src/services/blockchainService');
-jest.mock('../../../src/utils/logger');
+jest.mock('../../../src/utils/logger', () => ({
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+  stream: { write: jest.fn() },
+  child: jest.fn(() => ({ error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() })),
+}));
 
 describe('Todo Controller', () => {
   let req, res, next;

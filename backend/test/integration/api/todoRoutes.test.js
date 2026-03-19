@@ -7,7 +7,14 @@ const { validateAddress } = require('../../../src/middleware/auth');
 
 // Mock dependencies
 jest.mock('../../../src/controllers/todoController');
-jest.mock('../../../src/utils/logger');
+jest.mock('../../../src/utils/logger', () => ({
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+  stream: { write: jest.fn() },
+  child: jest.fn(() => ({ error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() })),
+}));
 
 describe('Todo Routes Integration Tests', () => {
   let app;

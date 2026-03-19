@@ -258,7 +258,7 @@ describe('Contract Event Validation', () => {
 
   describe('Configuration File Event References', () => {
     test('should load correct contract ABI', () => {
-      const configPath = path.join(__dirname, '../../src/config/blockchain.js');
+      const configPath = path.join(__dirname, '../../src/config/blockchain.ts');
       const configCode = fs.readFileSync(configPath, 'utf8');
 
       expect(configCode).toContain('TodoListV2.sol');
