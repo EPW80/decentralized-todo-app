@@ -64,14 +64,16 @@ const validateEnv = (): boolean => {
 
   // Validate CORS_ORIGIN format
   if (process.env.CORS_ORIGIN) {
-    const origins = process.env.CORS_ORIGIN.split(",").map((o) => o.trim());
-    origins.forEach((origin) => {
-      if (!origin.match(/^https?:\/\/.+/)) {
-        errors.push(
-          `Invalid CORS_ORIGIN format: "${origin}". Must start with http:// or https://`,
-        );
-      }
-    });
+    if (process.env.CORS_ORIGIN !== "*") {
+      const origins = process.env.CORS_ORIGIN.split(",").map((o) => o.trim());
+      origins.forEach((origin) => {
+        if (!origin.match(/^https?:\/\/.+/)) {
+          errors.push(
+            `Invalid CORS_ORIGIN format: "${origin}". Must start with http:// or https://`,
+          );
+        }
+      });
+    }
   }
 
   // Report errors

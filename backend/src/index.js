@@ -72,21 +72,25 @@ validateEnvironment();
 app.use(helmet()); // Security headers
 
 // Improved CORS with multiple origins support
-const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || ['http://localhost:3000'];
+const corsOriginEnv = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const allowAllOrigins = corsOriginEnv === '*';
+const corsOrigins = allowAllOrigins ? [] : corsOriginEnv.split(',').map(o => o.trim());
 
 // Validate CORS origins format
-corsOrigins.forEach(origin => {
-  if (!origin.match(/^https?:\/\/.+/)) {
-    logger.warn(`⚠️  Invalid CORS origin format: "${origin}". Should start with http:// or https://`);
-  }
-});
+if (!allowAllOrigins) {
+  corsOrigins.forEach(origin => {
+    if (!origin.match(/^https?:\/\/.+/)) {
+      logger.warn(`⚠️  Invalid CORS origin format: "${origin}". Should start with http:// or https://`);
+    }
+  });
+}
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, curl, etc.)
     if (!origin) return callback(null, true);
 
-    if (corsOrigins.includes(origin)) {
+    if (allowAllOrigins || corsOrigins.includes(origin)) {
       callback(null, true);
     } else {
       logger.warn(`⚠️  Blocked CORS request from unauthorized origin: ${origin}`);
