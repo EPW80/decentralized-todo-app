@@ -26,9 +26,6 @@ vi.mock('../../contracts/TodoListV2ABI.json', () => ({
   default: [],
 }));
 
-// Mock import.meta.env
-const originalEnv = import.meta.env;
-
 import { blockchainService } from '../../services/blockchain';
 
 describe('blockchainService', () => {
