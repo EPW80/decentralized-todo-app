@@ -1,11 +1,12 @@
 {
   "network": "sepolia",
   "chainId": "11155111",
-  "proxy": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-  "implementation": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-  "proxyAdmin": "0x0000000000000000000000000000000000000000",
-  "deployer": "unknown",
-  "timestamp": "2025-12-14T02:00:00.000Z",
-  "version": "2.0.0",
-  "blockNumber": "0"
+  "deployer": "0xe169e0E830607df3dFf5C3f402104b4BA2B66041",
+  "contracts": {
+    "TodoListV2": {
+      "address": "0x0F4228B43aa4b9A8F05AD058a9508039A7B8ee4d",
+      "blockNumber": "N/A",
+      "timestamp": "2026-03-20T00:35:12.607Z"
+    }
+  }
 }
