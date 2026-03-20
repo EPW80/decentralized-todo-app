@@ -96,12 +96,21 @@ const loadContractAddresses = (): Record<number, string | undefined> => {
 
 // Load contract ABI
 const loadContractABI = (): unknown[] => {
+  // Try bundled ABI first (works in production/Railway where artifacts/ is not available)
+  const bundledAbiPath = path.join(__dirname, "../contracts/TodoListV2.abi.json");
+  // Fallback to Hardhat artifacts (local development)
+  const artifactAbiPath = path.join(
+    __dirname,
+    "../../../contracts/artifacts/contracts/TodoListV2.sol/TodoListV2.json",
+  );
+
   try {
-    const abiPath = path.join(
-      __dirname,
-      "../../../contracts/artifacts/contracts/TodoListV2.sol/TodoListV2.json",
-    );
-    const artifact = JSON.parse(fs.readFileSync(abiPath, "utf8"));
+    if (fs.existsSync(bundledAbiPath)) {
+      logger.info("Loading contract ABI from bundled file");
+      return JSON.parse(fs.readFileSync(bundledAbiPath, "utf8"));
+    }
+    logger.info("Loading contract ABI from Hardhat artifacts");
+    const artifact = JSON.parse(fs.readFileSync(artifactAbiPath, "utf8"));
     return artifact.abi;
   } catch (error: unknown) {
     const err = error as Error;
