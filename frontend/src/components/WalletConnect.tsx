@@ -13,6 +13,7 @@ const WalletConnect: React.FC = () => {
   const [showError, setShowError] = useState(false);
   const [showNetworkSwitcher, setShowNetworkSwitcher] = useState(false);
   const networkTheme = useNetworkTheme();
+  const isMetaMaskInstalled = typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
 
   useEffect(() => {
     if (error) {
@@ -99,6 +100,20 @@ const WalletConnect: React.FC = () => {
 
       <div className="flex items-center gap-3">
         {!isConnected ? (
+          !isMetaMaskInstalled ? (
+            <a
+              href="https://metamask.io/download/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-glow transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] transform flex items-center gap-2.5"
+              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm">Install MetaMask</span>
+            </a>
+          ) : (
           <button
             onClick={connect}
             disabled={isConnecting}
@@ -129,6 +144,7 @@ const WalletConnect: React.FC = () => {
               <div className="absolute inset-0 rounded-xl bg-white/20 animate-pulse"></div>
             )}
           </button>
+          )
         ) : (
           <div className="flex flex-wrap items-center gap-2.5 animate-slide-in">
             {/* Enhanced Network Badge with Switcher */}

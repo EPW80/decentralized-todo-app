@@ -126,6 +126,10 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       // Store connection state
       localStorage.setItem('walletConnected', 'true');
     } catch (error: unknown) {
+      // Clear stale connection state so next page load doesn't auto-connect into an error
+      localStorage.removeItem('walletConnected');
+      localStorage.removeItem('authToken');
+
       // Handle MetaMask-specific errors gracefully
       let errorMessage = toErrorMessage(error);
       let shouldLog = true;

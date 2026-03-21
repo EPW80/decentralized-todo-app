@@ -4,6 +4,7 @@ import { apiService } from '../services/api';
 import TodoItem from './TodoItem';
 import AddTodoForm from './AddTodoForm';
 import LoadingSpinner from './LoadingSpinner';
+import WalletConnect from './WalletConnect';
 import { HexagonPattern, NetworkNodes, DigitalGrid, ChainLinkPattern } from './patterns';
 import type { Todo, UserStats } from '../types/todo';
 
@@ -129,7 +130,7 @@ const TodoList: React.FC = () => {
           <p className="text-gray-600 text-lg mb-6 relative z-10">
             Connect your wallet to start managing your tasks on the blockchain 🔐
           </p>
-          <div className="flex flex-col gap-3 text-sm text-gray-500 max-w-md mx-auto relative z-10">
+          <div className="flex flex-col gap-3 text-sm text-gray-500 max-w-md mx-auto mb-8 relative z-10">
             <div className="flex items-center gap-2">
               <span className="text-green-500">✓</span>
               <span>Secure and immutable task storage</span>
@@ -142,6 +143,9 @@ const TodoList: React.FC = () => {
               <span className="text-green-500">✓</span>
               <span>Transparent and verifiable</span>
             </div>
+          </div>
+          <div className="relative z-10 flex justify-center">
+            <WalletConnect />
           </div>
         </div>
       </div>
