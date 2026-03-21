@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { apiService } from '../services/api';
+import { blockchainService } from '../services/blockchain';
 import TodoItem from './TodoItem';
 import AddTodoForm from './AddTodoForm';
 import LoadingSpinner from './LoadingSpinner';
@@ -9,10 +10,11 @@ import { HexagonPattern, NetworkNodes, DigitalGrid, ChainLinkPattern } from './p
 import type { Todo, UserStats } from '../types/todo';
 
 const TodoList: React.FC = () => {
-  const { address, isConnected } = useWeb3();
+  const { address, isConnected, provider, chainId } = useWeb3();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
 
@@ -74,6 +76,33 @@ const TodoList: React.FC = () => {
   const handleRefresh = () => {
     fetchTodos();
     fetchStats();
+  };
+
+  const handleResyncFromBlockchain = async () => {
+    if (!provider || !chainId || !address) return;
+
+    setIsSyncing(true);
+    setError(null);
+
+    try {
+      const taskIds = await blockchainService.getUserTasks(provider, chainId, address);
+
+      for (const taskId of taskIds) {
+        try {
+          await apiService.syncTodoFromBlockchain(chainId, taskId);
+        } catch {
+          // Continue syncing other tasks if one fails
+        }
+      }
+
+      await fetchTodos();
+      await fetchStats();
+    } catch (err) {
+      console.error('Resync error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to resync from blockchain');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // Optimistic update handlers
@@ -225,16 +254,29 @@ const TodoList: React.FC = () => {
             </div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Your Tasks</h2>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className="glass-effect px-5 py-2.5 rounded-xl font-medium text-gray-700 hover:shadow-glow-sm transition-all duration-200 disabled:opacity-50 flex items-center gap-2"
-          >
-            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleResyncFromBlockchain}
+              disabled={isSyncing || loading}
+              className="glass-effect px-5 py-2.5 rounded-xl font-medium text-gray-700 hover:shadow-glow-sm transition-all duration-200 disabled:opacity-50 flex items-center gap-2"
+              title="Resync all tasks from the blockchain"
+            >
+              <svg className={`w-4 h-4 ${isSyncing ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              <span>{isSyncing ? 'Syncing...' : 'Resync'}</span>
+            </button>
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="glass-effect px-5 py-2.5 rounded-xl font-medium text-gray-700 hover:shadow-glow-sm transition-all duration-200 disabled:opacity-50 flex items-center gap-2"
+            >
+              <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-3 mb-8 animate-slide-in relative z-10">

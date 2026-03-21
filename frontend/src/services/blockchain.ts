@@ -134,7 +134,7 @@ export const blockchainService = {
     const contract = this.getContract(provider, chainId);
     if (!contract) throw new Error('Contract not available');
 
-    const tasks = await contract.getUserTaskDetails(userAddress);
+    const tasks = await contract.getUserTaskDetails(userAddress, false);
     return tasks.map((task: TaskStruct) => ({
       id: task.id.toString(),
       owner: task.owner,
