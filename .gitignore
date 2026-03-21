@@ -103,3 +103,12 @@ contracts/deployments/deployment-31337.json
 
 # Hardhat cache for local network
 .openzeppelin/unknown-*.json
+
+# OpenZeppelin upgrades plugin state (environment-specific)
+.openzeppelin/*.json
+
+# Auto-generated deployment pointer
+contracts/deployments/latest.json
+
+# Old deployment format files
+contracts/deployments/TodoListV2-*.json
