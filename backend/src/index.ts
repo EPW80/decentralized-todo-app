@@ -1,37 +1,47 @@
-require('dotenv').config();
+import 'dotenv/config';
 
 // Validate environment variables before starting
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const validateEnv = require('./config/validateEnv');
 validateEnv();
 
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
+import express, { Application, Request, Response, NextFunction } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import http from 'http';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const connectDB = require('./config/database');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const blockchainService = require('./services/blockchainService');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const authRoutes = require('./routes/authRoutes');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const todoRoutes = require('./routes/todoRoutes');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const healthRoutes = require('./routes/healthRoutes');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const errorHandler = require('./middleware/errorHandler');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const logger = require('./utils/logger');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const requestLogger = require('./middleware/requestLogger');
 
-const app = express();
+const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
 /**
  * Validate environment variables at startup
  */
-function validateEnvironment() {
+function validateEnvironment(): void {
   const insecureSecrets = [
     'your_super_secret_jwt_key_change_this_in_production',
     'secret',
     'change_me',
     'jwt_secret',
-    'test'
+    'test',
   ];
 
   const secret = process.env.JWT_SECRET || '';
@@ -54,7 +64,7 @@ function validateEnvironment() {
 
   // Validate required environment variables
   const required = ['MONGODB_URI', 'JWT_SECRET'];
-  const missing = required.filter(key => !process.env[key]);
+  const missing = required.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {
     logger.error(`Missing required environment variables: ${missing.join(', ')}`);
@@ -74,32 +84,36 @@ app.use(helmet()); // Security headers
 // Improved CORS with multiple origins support
 const corsOriginEnv = process.env.CORS_ORIGIN || 'http://localhost:3000';
 const allowAllOrigins = corsOriginEnv === '*';
-const corsOrigins = allowAllOrigins ? [] : corsOriginEnv.split(',').map(o => o.trim());
+const corsOrigins = allowAllOrigins ? [] : corsOriginEnv.split(',').map((o) => o.trim());
 
 // Validate CORS origins format
 if (!allowAllOrigins) {
-  corsOrigins.forEach(origin => {
+  corsOrigins.forEach((origin) => {
     if (!origin.match(/^https?:\/\/.+/)) {
-      logger.warn(`⚠️  Invalid CORS origin format: "${origin}". Should start with http:// or https://`);
+      logger.warn(
+        `⚠️  Invalid CORS origin format: "${origin}". Should start with http:// or https://`,
+      );
     }
   });
 }
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, curl, etc.)
-    if (!origin) return callback(null, true);
+app.use(
+  cors({
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      // Allow requests with no origin (mobile apps, Postman, curl, etc.)
+      if (!origin) return callback(null, true);
 
-    if (allowAllOrigins || corsOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      logger.warn(`⚠️  Blocked CORS request from unauthorized origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  maxAge: 86400 // 24 hours
-}));
+      if (allowAllOrigins || corsOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn(`⚠️  Blocked CORS request from unauthorized origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    maxAge: 86400, // 24 hours
+  }),
+);
 
 app.use(requestLogger); // Request logging with correlation IDs
 app.use(express.json({ limit: '10kb' })); // Parse JSON bodies with size limit
@@ -107,26 +121,29 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' })); // Prevent large
 
 // Rate limiting - Standard limiter for most endpoints
 const standardLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '') || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '') || 100,
   message: { success: false, error: 'Too many requests from this IP, please try again later.' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 // Strict limiter for expensive blockchain operations
 const strictLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // 10 requests per 15 minutes for expensive operations
-  message: { success: false, error: 'Too many requests for this operation, please try again later.' },
+  message: {
+    success: false,
+    error: 'Too many requests for this operation, please try again later.',
+  },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 app.use('/api/', standardLimiter);
 
 // Export limiters for use in routes
-app.locals.strictLimiter = strictLimiter;
+app.locals['strictLimiter'] = strictLimiter;
 
 // Routes
 app.use('/api/health', healthRoutes);
@@ -137,8 +154,9 @@ app.use('/api/todos', todoRoutes);
 app.use(errorHandler);
 
 // Initialize application
-let server;
-const startServer = async () => {
+let server: http.Server | undefined;
+
+const startServer = async (): Promise<void> => {
   try {
     // Connect to MongoDB
     await connectDB();
@@ -155,7 +173,8 @@ const startServer = async () => {
       logger.info(`✓ CORS enabled for: ${corsOrigins.join(', ')}`);
     });
   } catch (error) {
-    logger.error('Failed to start server:', { error: error.message, stack: error.stack });
+    const err = error as Error;
+    logger.error('Failed to start server:', { error: err.message, stack: err.stack });
     process.exit(1);
   }
 };
@@ -163,7 +182,7 @@ const startServer = async () => {
 // Enhanced graceful shutdown
 let isShuttingDown = false;
 
-async function gracefulShutdown(signal) {
+async function gracefulShutdown(signal: string): Promise<void> {
   if (isShuttingDown) {
     logger.warn('⚠️  Forced shutdown');
     process.exit(1);
@@ -192,6 +211,7 @@ async function gracefulShutdown(signal) {
 
     // Close MongoDB connection
     logger.info('Closing MongoDB connection...');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mongoose = require('mongoose');
     await mongoose.connection.close(false);
     logger.info('✓ MongoDB connection closed');
@@ -200,7 +220,8 @@ async function gracefulShutdown(signal) {
     logger.info('✓ Graceful shutdown completed');
     process.exit(0);
   } catch (error) {
-    logger.error('❌ Error during shutdown:', { error: error.message, stack: error.stack });
+    const err = error as Error;
+    logger.error('❌ Error during shutdown:', { error: err.message, stack: err.stack });
     clearTimeout(shutdownTimeout);
     process.exit(1);
   }

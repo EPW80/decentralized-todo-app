@@ -69,7 +69,7 @@ describe('Contract Event Validation', () => {
     let serviceCode;
 
     beforeAll(() => {
-      const servicePath = path.join(__dirname, '../../src/services/blockchainService.js');
+      const servicePath = path.join(__dirname, '../../src/services/blockchainService.ts');
       serviceCode = fs.readFileSync(servicePath, 'utf8');
     });
 
@@ -154,7 +154,7 @@ describe('Contract Event Validation', () => {
     let serviceCode;
 
     beforeAll(() => {
-      const servicePath = path.join(__dirname, '../../src/services/blockchainService.js');
+      const servicePath = path.join(__dirname, '../../src/services/blockchainService.ts');
       serviceCode = fs.readFileSync(servicePath, 'utf8');
     });
 
@@ -177,7 +177,7 @@ describe('Contract Event Validation', () => {
     let serviceCode;
 
     beforeAll(() => {
-      const servicePath = path.join(__dirname, '../../src/services/blockchainService.js');
+      const servicePath = path.join(__dirname, '../../src/services/blockchainService.ts');
       serviceCode = fs.readFileSync(servicePath, 'utf8');
     });
 
@@ -201,7 +201,7 @@ describe('Contract Event Validation', () => {
     let serviceCode;
 
     beforeAll(() => {
-      const servicePath = path.join(__dirname, '../../src/services/blockchainService.js');
+      const servicePath = path.join(__dirname, '../../src/services/blockchainService.ts');
       serviceCode = fs.readFileSync(servicePath, 'utf8');
     });
 
@@ -212,15 +212,17 @@ describe('Contract Event Validation', () => {
       const paramNames = event.inputs.map(input => input.name);
       expect(paramNames).toEqual(['taskId', 'owner', 'description', 'timestamp', 'dueDate']);
 
-      const handlerMatch = serviceCode.match(/taskCreated:\s*async\s*\(([^)]+)\)/);
+      // Handlers use ...args with a typed tuple destructure inside.
+      // Verify the destructured names appear in the handler body.
+      const handlerMatch = serviceCode.match(/taskCreated:\s*async\s*\([^)]*\)\s*=>\s*\{([\s\S]*?)(?=\n\s{6}taskCompleted:)/);
       expect(handlerMatch).toBeTruthy();
 
-      const handlerParams = handlerMatch[1].split(',').map(p => p.trim());
-      expect(handlerParams).toContain('taskId');
-      expect(handlerParams).toContain('owner');
-      expect(handlerParams).toContain('description');
-      expect(handlerParams).toContain('timestamp');
-      expect(handlerParams).toContain('dueDate');
+      const handlerBody = handlerMatch[1];
+      expect(handlerBody).toContain('taskId');
+      expect(handlerBody).toContain('owner');
+      expect(handlerBody).toContain('description');
+      expect(handlerBody).toContain('timestamp');
+      expect(handlerBody).toContain('dueDate');
     });
 
     test('TaskUpdated should have correct parameters', () => {
@@ -304,7 +306,7 @@ describe('Migration Safety Checks', () => {
 
   test('should not reference obsolete sync methods anywhere', () => {
     const filesToCheck = [
-      path.join(__dirname, '../../src/services/blockchainService.js'),
+      path.join(__dirname, '../../src/services/blockchainService.ts'),
       path.join(__dirname, '../../src/scripts/syncSpecificBlock.js')
     ];
 
