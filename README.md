@@ -1,602 +1,302 @@
 # Decentralized Todo App
 
-[![CI](https://github.com/yourusername/decentralized-todo-app/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/decentralized-todo-app/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/yourusername/decentralized-todo-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/yourusername/decentralized-todo-app/actions/workflows/codeql.yml)
+[![CI](https://github.com/EPW80/decentralized-todo-app/actions/workflows/ci.yml/badge.svg)](https://github.com/EPW80/decentralized-todo-app/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/EPW80/decentralized-todo-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/EPW80/decentralized-todo-app/actions/workflows/codeql.yml)
 
-A full-stack decentralized todo application combining blockchain technology with traditional web architecture. This project demonstrates the integration of smart contracts with a modern web application stack.
+A full-stack decentralized todo application that stores tasks on-chain via an upgradeable Solidity smart contract, syncs them to a MongoDB cache through real-time event listeners, and serves them through a React/TypeScript frontend with MetaMask wallet authentication.
+
+**Live deployment:** Frontend on [Vercel](https://vercel.com) | Backend on [Railway](https://backend-production-e1e2.up.railway.app/api/health) | Smart contract on [Sepolia](https://sepolia.etherscan.io/address/0x0F4228B43aa4b9A8F05AD058a9508039A7B8ee4d)
 
 ## Quick Start
 
 ```bash
-# 1. Clone and install dependencies
-git clone <repository-url>
+# 1. Clone and install
+git clone https://github.com/EPW80/decentralized-todo-app.git
 cd decentralized-todo-app
-npm install --workspaces
+npm install
 
 # 2. Setup environment variables
 cp backend/.env.example backend/.env
-# Edit backend/.env with your configuration
-# IMPORTANT: Ensure MONGODB_URI includes database name
+# Edit backend/.env with your MongoDB URI and RPC URLs
 
 # 3. Start Hardhat node (terminal 1)
-cd contracts
-npx hardhat node
+cd contracts && npx hardhat node
 
 # 4. Deploy contracts (terminal 2)
-cd contracts
-npx hardhat run scripts/deploy.js --network localhost
+cd contracts && npx hardhat run scripts/deploy.js --network localhost
 
 # 5. Start backend (terminal 3)
-cd backend
-npm start
+cd backend && npm start
 
 # 6. Start frontend (terminal 4)
-cd frontend
-npm run dev
+cd frontend && npm run dev
 ```
 
-Open http://localhost:5173 and connect your MetaMask wallet!
+Or use the helper scripts:
 
-## Architecture Overview
+```bash
+./start-dev.sh   # Start all services
+./stop-dev.sh    # Stop all services
+```
+
+Open http://localhost:5173 and connect your MetaMask wallet.
+
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Frontend (React)                      │
-│  - React + TypeScript                                        │
-│  - Ethers.js for Web3 interaction                           │
-│  - Material-UI/TailwindCSS for styling                      │
-│  - State management (Context API/Redux)                     │
-└────────────┬────────────────────────────┬───────────────────┘
-             │                            │
-             │ REST API                   │ Web3 RPC
-             │                            │
-┌────────────▼────────────────┐  ┌────────▼──────────────────┐
-│   Backend (Express + MongoDB)│  │  Blockchain (Ethereum)    │
-│  - Node.js + Express         │  │  - Hardhat                │
-│  - MongoDB for off-chain data│  │  - Solidity Smart Contract│
-│  - User authentication       │  │  - On-chain todo storage  │
-│  - API endpoints             │  │  - Event emission         │
-└──────────────────────────────┘  └───────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                   Frontend (React + TypeScript)               │
+│  Vite · Ethers.js v6 · TailwindCSS · React Router v7        │
+│  Code-split routes · Dark mode · Responsive                  │
+└───────────┬──────────────────────────────────┬───────────────┘
+            │ REST API (JWT)                   │ JSON-RPC
+            │                                  │
+┌───────────▼──────────────────┐   ┌───────────▼───────────────┐
+│  Backend (Express + MongoDB) │   │  Blockchain (EVM)         │
+│  TypeScript · Winston logger │   │  Solidity 0.8.22          │
+│  EIP-191 wallet auth         │   │  UUPS upgradeable proxy   │
+│  Real-time event sync        │   │  OpenZeppelin 5.0.1       │
+│  RPC failover · Rate limit   │   │  Multi-chain configured   │
+└──────────────────────────────┘   └───────────────────────────┘
 ```
 
 ## Project Structure
 
 ```
 decentralized-todo-app/
-├── contracts/              # Smart contract development
-│   ├── contracts/          # Solidity smart contracts
-│   ├── scripts/            # Deployment scripts
-│   ├── test/              # Contract tests
-│   └── hardhat.config.js  # Hardhat configuration
-│
-├── backend/               # Express server
+├── contracts/                # Hardhat project
+│   ├── contracts/            #   TodoListV2.sol (UUPS upgradeable)
+│   ├── test/                 #   5 test suites (unit, access, fuzz, edge, upgrade)
+│   ├── scripts/              #   Deployment & upgrade scripts
+│   └── deployments/          #   Per-network deployment JSONs
+├── backend/                  # Express API server
 │   ├── src/
-│   │   ├── models/        # MongoDB models
-│   │   ├── routes/        # API routes
-│   │   ├── controllers/   # Request handlers
-│   │   ├── middleware/    # Custom middleware
-│   │   └── utils/         # Helper functions
-│   └── server.js          # Entry point
-│
-├── frontend/              # React application
+│   │   ├── controllers/      #   Request handlers
+│   │   ├── middleware/       #   Auth, validation, error handling
+│   │   ├── models/           #   MongoDB schemas (Mongoose)
+│   │   ├── routes/           #   REST endpoints
+│   │   ├── services/         #   blockchainService.ts (event sync, RPC failover)
+│   │   └── utils/            #   Logger, helpers
+│   └── test/                 #   Jest test suites
+├── frontend/                 # React SPA
 │   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── pages/         # Page components
-│   │   ├── hooks/         # Custom hooks
-│   │   ├── context/       # Context providers
-│   │   ├── services/      # API & Web3 services
-│   │   └── utils/         # Utility functions
-│   └── public/            # Static assets
-│
-├── .gitignore
-├── package.json           # Monorepo configuration
+│   │   ├── components/       #   TodoList, AddTodoForm, WalletConnect, etc.
+│   │   ├── contexts/         #   Web3Context, ThemeContext
+│   │   ├── services/         #   API client, blockchain service
+│   │   └── types/            #   TypeScript interfaces
+├── .github/workflows/        # CI, Deploy, CodeQL, Dependency Check
+├── package.json              # npm workspaces root
 └── README.md
 ```
 
 ## Technology Stack
 
-### Smart Contracts
-- **Solidity** - Smart contract programming language
-- **Hardhat** - Ethereum development environment
-- **OpenZeppelin 5.0.1** - Secure smart contract library (upgradeable contracts)
-- **Ethers.js** - Ethereum library for contract interaction
-
-### Backend
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web application framework
-- **MongoDB** - NoSQL database (local or MongoDB Atlas)
-- **Mongoose** - MongoDB object modeling
-- **JWT** - Authentication with wallet signatures (EIP-191)
-- **Winston** - Structured logging with daily rotation
-- **Jest** - Testing framework with coverage reporting
-
-### Frontend
-- **React** - UI library
-- **TypeScript** - Type-safe JavaScript
-- **Ethers.js** - Web3 interaction
-- **React Router** - Routing
-- **Axios** - HTTP client
-- **Material-UI / TailwindCSS** - UI components
+| Layer | Technologies |
+|-------|-------------|
+| **Smart Contracts** | Solidity 0.8.22, Hardhat, OpenZeppelin 5.0.1 (UUPS, AccessControl, Pausable, ReentrancyGuard) |
+| **Backend** | Node.js, Express, TypeScript, MongoDB/Mongoose, JWT, Winston, Jest |
+| **Frontend** | React 19, TypeScript, Vite, Ethers.js v6, TailwindCSS, React Router v7, Vitest |
+| **DevOps** | GitHub Actions (4 workflows), Vercel, Railway, npm workspaces |
 
 ## Features
 
-### Blockchain Features
-- Create todos on-chain with TodoListV2 contract
-- Mark todos as complete/incomplete
-- Soft delete todos (with restore capability)
-- Todo ownership verification
-- Event emission for todo actions
-- Circuit breaker pattern for emergency pause
-- Access control with OpenZeppelin
-- Comprehensive security features
+### Smart Contract (TodoListV2)
 
-### Backend Features
-- Wallet signature authentication (EIP-191)
-- RESTful API for todo operations
-- Off-chain MongoDB caching for scalability
+- UUPS upgradeable proxy pattern for zero-downtime upgrades
+- Role-based access control (ADMIN, MODERATOR, UPGRADER)
+- Circuit breaker (Pausable) for emergency stops
+- Reentrancy protection on all state-changing functions
+- Per-user rate limiting
+- Soft delete with restore capability
+- Due date support on tasks
+- Event emission for all operations (`TaskCreated`, `TaskCompleted`, `TaskDeleted`, `TaskRestored`)
+
+### Backend
+- Wallet signature authentication (EIP-191 standard)
+- JWT session tokens (7-day expiry)
 - Real-time blockchain event synchronization
-- Multi-chain support (Ethereum Sepolia, localhost)
-- Structured logging with Winston
-- Manual event sync for missed transactions
-- Todo verification against blockchain
-- Test coverage with Jest
+- Blockchain resync endpoint for missed events
+- Multi-chain RPC failover with health monitoring
+- Structured JSON logging with daily rotation (Winston)
+- Rate limiting (100 req/15 min)
+- Security headers (Helmet.js), CORS, input validation
+- Off-chain MongoDB cache for fast reads
 
-### Frontend Features
-- Wallet connection (MetaMask)
-- Create, read, update, delete todos
-- Filter todos by status
-- Responsive design
-- Real-time blockchain updates
+### Frontend
+- MetaMask wallet connect with install detection
+- Create, complete, delete, and restore todos
+- Resync button to recover missed on-chain tasks
+- Filter by status (all/active/completed) with pagination
+- Analytics dashboard with completion stats
+- Dark mode, responsive design, glass-effect UI
+- Code-split routes with lazy loading
+- Network-aware theme colors per chain
 
-## Getting Started
+## Deployments
 
-### Prerequisites
-- Node.js >= 18.0.0
-- npm >= 9.0.0
-- MongoDB (local or Atlas)
-- MetaMask browser extension
+| Network | Chain ID | Contract Address |
+|---------|----------|-----------------|
+| **Sepolia** | 11155111 | [`0x0F4228B43aa4b9A8F05AD058a9508039A7B8ee4d`](https://sepolia.etherscan.io/address/0x0F4228B43aa4b9A8F05AD058a9508039A7B8ee4d) |
+| Localhost | 31337 | `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512` |
 
-### Installation
+**Configured but not yet deployed:** Polygon Amoy (80002), Arbitrum Sepolia (421614), Optimism Sepolia (11155420)
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/decentralized-todo-app.git
-   cd decentralized-todo-app
-   ```
+**Infrastructure:**
+- Frontend: Vercel (auto-deploy on push to main)
+- Backend: Railway (`https://backend-production-e1e2.up.railway.app`)
+- Database: MongoDB Atlas
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+## API Endpoints
 
-   **Note:** The project uses npm workspaces. If you encounter OpenZeppelin import errors during compilation, ensure you have the correct versions installed:
-   - `@openzeppelin/contracts@5.0.1`
-   - `@openzeppelin/contracts-upgradeable@5.0.1`
-   - `@openzeppelin/hardhat-upgrades@3.0.0`
+### Authentication
 
-3. **Setup environment variables**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/auth/nonce/:address` | Get nonce for wallet signature |
+| POST | `/api/auth/login` | Authenticate with EIP-191 signature |
 
-   Create `.env` files in each workspace:
-   - `contracts/.env` - Blockchain configuration
-   - `backend/.env` - Server and database configuration
-   - `frontend/.env` - API and contract addresses
+### Todos (JWT required)
 
-### Development
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/todos/:address` | List todos (query: `includeCompleted`, `includeDeleted`, `search`, `dueFilter`, `sort`) |
+| GET | `/api/todos/:address/stats` | User statistics (total, active, completed, rate) |
+| GET | `/api/todos/todo/:id` | Get single todo |
+| GET | `/api/todos/verify/:id` | Verify todo against blockchain |
+| POST | `/api/todos/sync` | Manually sync a task from blockchain |
+| POST | `/api/todos/restore` | Restore a soft-deleted todo |
 
-1. **Start local Hardhat node**
-   ```bash
-   cd contracts
-   npx hardhat node
-   ```
+### Health
 
-2. **Deploy smart contracts** (in a new terminal)
-   ```bash
-   cd contracts
-   npx hardhat run scripts/deploy.js --network localhost
-   ```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Server, database, and blockchain status |
 
-3. **Start backend server**
-   ```bash
-   cd backend
-   npm start
-   ```
-
-4. **Start frontend application**
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-The application will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5000
-- Hardhat node: http://127.0.0.1:8545
-
-### Testing
-
-```bash
-# Test all workspaces
-npm test
-
-# Test specific workspace
-npm run test:contracts
-npm run test:backend
-npm run test:frontend
-```
-
-### Building for Production
-
-```bash
-npm run build
-```
-
-## CI/CD Pipeline
-
-This project uses GitHub Actions for continuous integration and deployment. All workflows are located in `.github/workflows/`.
-
-### Automated Workflows
-
-#### CI Workflow
-**Runs on:** Every push to `main` and all pull requests
-
-The CI pipeline ensures code quality by running:
-- **Linting**: ESLint checks for code quality
-- **Contract Tests**: Hardhat test suite for smart contracts
-- **Backend Tests**: Jest tests with coverage reporting
-- **Frontend Tests**: Vitest tests for React components
-- **Build**: Compiles all workspaces and uploads artifacts
-
-All tests must pass before code can be merged.
-
-#### CodeQL Security Analysis
-**Runs on:** Push to `main`, pull requests, and weekly
-
-Automated security scanning for JavaScript and TypeScript code to identify potential vulnerabilities.
-
-#### Dependency Check
-**Runs on:** Weekly (Mondays at 9:00 AM UTC) and pull requests
-
-- Security audit for npm vulnerabilities
-- Checks for outdated packages
-- Reviews dependency changes in PRs
-
-#### Deploy Workflow
-**Runs on:** Manual trigger via GitHub Actions UI
-
-Allows manual deployment to:
-- **Environments**: staging or production
-- **Networks**: localhost, sepolia, or mainnet
-
-**Required secrets:**
-- `DEPLOYER_PRIVATE_KEY` - Private key for contract deployment
-- `INFURA_API_KEY` - Infura API key for network access
-- `ETHERSCAN_API_KEY` - Etherscan API key for contract verification
-
-For detailed workflow documentation, see [.github/workflows/README.md](.github/workflows/README.md).
-
-### Local Pre-Push Checks
-
-Before pushing code, run these checks locally:
+## Testing
 
 ```bash
 # Run all tests
 npm test
 
-# Run linting
-npm run lint
-
-# Build all workspaces
-npm run build
-
-# Check for security vulnerabilities
-npm audit
+# Individual workspaces
+cd contracts && npx hardhat test          # 195+ tests (unit, access, fuzz, edge, upgrade)
+cd backend && npm test                     # Jest with coverage
+cd frontend && npm test                    # Vitest + React Testing Library
 ```
 
-## Smart Contract Architecture
+### Contract Test Coverage
 
-The **TodoListV2** contract (upgradeable) provides:
+| Suite | Tests | Focus |
+|-------|-------|-------|
+| `TodoListV2.test.js` | Core CRUD | Task creation, completion, deletion, restore, events |
+| `TodoListV2.accessControl.test.js` | RBAC | Role grant/revoke, permission enforcement, circuit breaker |
+| `TodoListV2.upgrade.test.js` | Upgradeability | UUPS proxy upgrade, state preservation, authorization |
+| `TodoListV2.edgeCases.test.js` | Boundaries | Overflow, max values, zero-address, gas limits |
+| `TodoListV2.fuzz.test.js` | Security | Random inputs, special chars, XSS/SQL injection, concurrency |
 
-**Core Features:**
-- Task struct: id, description, completed, deleted, timestamps, owner
-- Per-user task management with mapping
-- Soft delete with restore functionality
-- Comprehensive event emission
+## CI/CD Pipeline
 
-**Functions:**
-- `addTask(description)` - Create new todo
-- `completeTask(taskId)` - Mark as complete
-- `deleteTask(taskId)` - Soft delete (restorable)
-- `restoreTask(taskId)` - Restore deleted task
-- `getTask(taskId)` - Retrieve task details
-- `getTasksByUser(user)` - Get all user tasks
+Four GitHub Actions workflows run automatically:
 
-**Security Features:**
-- OpenZeppelin Pausable (circuit breaker)
-- ReentrancyGuard for protection
-- Ownable for access control
-- Owner-only modifications enforced
-- Input validation
-
-**Events:**
-- `TaskAdded` - New task created
-- `TaskCompleted` - Task marked complete
-- `TaskDeleted` - Task soft deleted
-- `TaskRestored` - Deleted task restored
-
-**Deployments:**
-- Localhost (Hardhat): 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
-- Ethereum Sepolia: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
-
-## API Endpoints
-
-### Authentication
-- `GET /api/auth/nonce/:address` - Get nonce for wallet signature
-- `POST /api/auth/login` - Authenticate with wallet signature
-
-### Health & Status
-- `GET /api/health` - Server and blockchain status
-
-### Todos
-- `GET /api/todos/:address` - Get all todos for address
-  - Query params: `includeCompleted`, `includeDeleted`
-- `GET /api/todos/:address/stats` - Get user statistics
-- `GET /api/todos/todo/:id` - Get specific todo
-- `GET /api/todos/verify/:id` - Verify todo against blockchain
-- `POST /api/todos/sync` - Manually sync todo from blockchain
-- `POST /api/todos/restore` - Restore deleted todo
-
-For detailed API documentation, see [backend/README.md](backend/README.md).
+1. **CI** (every push/PR) — Lint, test contracts, test backend, test frontend, build all workspaces
+2. **Deploy** (manual trigger) — Configurable environment (staging/production) and network (localhost/sepolia/mainnet)
+3. **CodeQL** (push/PR + weekly) — Automated security scanning for JS/TS vulnerabilities
+4. **Dependency Check** (weekly + PR) — npm audit, outdated package detection
 
 ## Configuration
 
-### Contracts Configuration
-See `contracts/README.md` for deployment networks and contract addresses.
+### Environment Variables
 
-### Backend Configuration
-See `backend/README.md` for environment variables and database setup.
-
-**Important MongoDB Setup:**
-Your MongoDB URI must include the database name:
+**Backend** (`backend/.env`):
 ```bash
-# Local MongoDB
-MONGODB_URI=mongodb://localhost:27017/decentralized-todo
-
-# MongoDB Atlas
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/decentralized-todo
+MONGODB_URI=mongodb://localhost:27017/decentralized-todo    # Must include database name
+JWT_SECRET=your-secret-here
+PORT=5000
+CORS_ORIGIN=http://localhost:5173
+EVENT_RECOVERY_DAYS=7    # Days of missed events to recover on restart
 ```
 
-Without the database name, MongoDB defaults to the 'test' database, causing data visibility issues.
+**Frontend** (`frontend/.env`):
+```bash
+VITE_API_URL=http://localhost:5000/api
+VITE_DEFAULT_CHAIN_ID=31337
+VITE_SUPPORTED_CHAIN_IDS=31337,11155111,80002,421614,11155420
+VITE_CONTRACT_ADDRESS_31337=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+VITE_CONTRACT_ADDRESS_11155111=0x0F4228B43aa4b9A8F05AD058a9508039A7B8ee4d
+```
 
-### Frontend Configuration
-See `frontend/README.md` for build configuration and deployment.
-
-## Important Notes
-
-### Event Synchronization
-The backend listens for blockchain events in real-time. However:
-
-1. **Event Recovery Limitations:**
-   - `EVENT_RECOVERY_DAYS=0` (recommended for free tier RPC)
-   - Alchemy free tier limits eth_getLogs to 10 block range
-   - Backend only captures events while running
-
-2. **Missed Events:**
-   - If backend is offline during a transaction, use the manual sync script
-   - Location: `backend/src/scripts/syncSpecificBlock.js`
-   - Configure chainId, fromBlock, and toBlock for your transaction
-
-3. **Best Practices:**
-   - Keep backend running continuously for production
-   - Use paid RPC tier for event recovery
-   - Monitor backend health with `/api/health` endpoint
-
-### Logging
-- All logs are in JSON format with timestamps
-- Location: `backend/logs/`
-- Sensitive data (passwords, keys) is automatically redacted
-- Each request gets a unique correlation ID for tracing
-
-### Testing
-- Backend has Jest test suite with 70% coverage target
-- Run tests before deployment: `npm test`
-- Frontend has Vitest suite with React Testing Library
-
-## Recent Updates & Known Issues
-
-### Latest Changes (March 2026)
-
-**✅ Fixed:**
-- **npm Workspace Configuration** - Resolved OpenZeppelin dependency version conflicts
-  - Pinned `@openzeppelin/contracts` and `@openzeppelin/contracts-upgradeable` to version 5.0.1
-  - Fixed `ReentrancyGuardUpgradeable.sol` import errors during Hardhat compilation
-  - Clean reinstall process to resolve corrupted lockfiles
-
-- **Contract Deployment** - Redeployed TodoListV2 proxy to localhost
-  - New proxy address: `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`
-  - Verified blockchain-MongoDB event synchronization working correctly
-  - Updated deployment configurations
-
-- **Code Quality** - ESLint and TypeScript improvements
-  - Fixed `@typescript-eslint/no-explicit-any` violations
-  - Improved type safety in FocusTrap component imports
-  - All CI/CD lint checks now passing
-
-- **Security** - Reduced npm vulnerabilities
-  - Decreased from 55 to 41 total vulnerabilities
-  - 22 low, 14 moderate, 5 high severity
-  - Remaining vulnerabilities are in dev dependencies (Hardhat toolbox)
-
-**📝 Current Status:**
-- Backend test coverage: 61.7% (target: 70%)
-- Frontend test coverage: 64.95% (target: 70%)
-- Contract tests: 195+ passing (100% coverage)
-- All services operational and synchronized
-
-### Known Issues
-
-**npm Vulnerabilities (41 total)**
-- Primarily in development dependencies (Hardhat, testing tools)
-- Does not affect production builds
-- Addressing these requires major version upgrades with breaking changes
-- Recommended to resolve before mainnet deployment
-
-**Workspace Installation**
-- If you encounter "corrupted lockfile" errors, delete all `node_modules` and `package-lock.json` files, then run `npm install`
-- npm workspaces may hoist dependencies; ensure correct OpenZeppelin versions are installed
-
-## Security Considerations
+## Security
 
 ### Smart Contract Security
-- OpenZeppelin Pausable (circuit breaker pattern)
-- ReentrancyGuard for reentrancy protection
-- Ownable for access control
-- Owner-only todo modifications enforced
-- Input validation (non-empty descriptions)
-- Comprehensive security testing
+
+- OpenZeppelin 5.0.1: AccessControl, Pausable, ReentrancyGuard, UUPSUpgradeable
+- Fuzz testing with random inputs including XSS, SQL injection, and path traversal payloads
+- Rate limiting per user address
 
 ### Backend Security
-- Wallet signature authentication (EIP-191 standard)
-- JWT tokens for optional session management
-- Rate limiting (100 requests per 15 minutes)
-- Helmet.js security headers
-- CORS configuration
-- Input validation with express-validator
+
+- EIP-191 wallet signature verification (no passwords)
+- JWT with expiration for stateless sessions
+- Helmet.js security headers, CORS, rate limiting
+- Input validation via express-validator
 - Sensitive data redaction in logs
-- Environment variable protection
 
-### Best Practices
-- Never commit `.env` files
-- Use strong JWT secrets (32+ characters)
-- Keep RPC URLs private
-- Regularly update dependencies
-- Monitor logs for suspicious activity
-- Test on testnet before mainnet deployment
+### Frontend Security
 
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Make your changes and ensure all tests pass:
-   ```bash
-   npm run lint
-   npm test
-   npm run build
-   ```
-4. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-5. Push to the branch (`git push origin feature/AmazingFeature`)
-6. Open a Pull Request
-
-**Note:** All pull requests must pass the CI workflow checks (linting, tests, and build) before they can be merged. The CI pipeline will automatically run when you open or update a PR.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- OpenZeppelin for secure smart contract libraries
-- Hardhat for excellent development tools
-- The Ethereum community
-
-## Roadmap
-
-### Completed ✅
-- [x] TodoListV2 with security features
-- [x] Soft delete with restore functionality
-- [x] Wallet signature authentication
-- [x] Structured logging with Winston
-- [x] Test infrastructure with Jest & Vitest
-- [x] Multi-chain support (Sepolia, localhost)
-- [x] Event synchronization with blockchain
-- [x] CI/CD pipeline with GitHub Actions
-- [x] Automated testing and security scanning
-- [x] Code quality enforcement (ESLint, TypeScript)
-- [x] npm workspace configuration fixes
-- [x] OpenZeppelin 5.0.1 integration
-- [x] Contract redeployment and verification
-
-### In Progress 🚧
-- [ ] Increase test coverage to 70%
-- [ ] Data visualization dashboard
-- [ ] Transaction analytics
-
-### Planned 📋
-- [ ] Additional chain support (Polygon, Arbitrum, Optimism)
-- [ ] IPFS integration for decentralized storage
-- [ ] Task sharing and collaboration features
-- [ ] Advanced filtering and search
-- [ ] Mobile application (React Native)
-- [ ] Todo categories and tags
-- [ ] Recurring tasks
-- [ ] Token rewards for task completion
-- [ ] Automated deployment to staging/production environments
-- [ ] Monitoring with Prometheus/Grafana
-- [ ] Error tracking with Sentry
+- Vercel security headers (X-Frame-Options: DENY, X-Content-Type-Options: nosniff)
+- No private keys in client code; all signing via MetaMask
 
 ## Troubleshooting
 
-### Contract Compilation Errors
-
-**Error: "ReentrancyGuardUpgradeable.sol not found"**
+**Contract compilation errors (OpenZeppelin imports):**
 ```bash
-# Solution: Clean install with correct OpenZeppelin versions
-rm -rf node_modules package-lock.json
-npm install
+rm -rf node_modules package-lock.json && npm install
 ```
 
-**Error: "Hardhat installed with corrupted lockfile (HH18)"**
-```bash
-# Solution: Clean reinstall all workspaces
-rm -rf node_modules package-lock.json
-rm -rf contracts/node_modules contracts/package-lock.json
-rm -rf backend/node_modules backend/package-lock.json
-rm -rf frontend/node_modules frontend/package-lock.json
-npm install
-```
+**Events not appearing in frontend:**
+1. Click the **Resync** button in the task list to pull tasks directly from the blockchain
+2. Check backend logs for event listener status
+3. Verify `EVENT_RECOVERY_DAYS` is set in backend `.env`
 
-### Blockchain Sync Issues
+**MetaMask connection issues:**
+- Ensure MetaMask is installed and unlocked
+- Reset account nonce in MetaMask if transactions fail on localhost
+- Verify you're on the correct network (Localhost 8545 or Sepolia)
 
-**Backend shows "NETWORK_ERROR" for localhost**
-- Ensure Hardhat node is running: `cd contracts && npx hardhat node`
-- Check that port 8545 is not blocked or in use
+**MongoDB "data not showing":**
+- Ensure your `MONGODB_URI` includes the database name (e.g., `/decentralized-todo`)
 
-**MongoDB connection issues**
-- Verify MongoDB is running: `mongod --version`
-- Check connection string includes database name: `mongodb://localhost:27017/decentralized-todo`
-- For MongoDB Atlas, ensure IP whitelist is configured
+## Roadmap
 
-**Events not syncing to database**
-- Check backend logs for event listener status
-- Verify contract address matches deployed contract
-- Use manual sync endpoint: `POST /api/todos/sync` with task details
+### Completed
 
-### Development Environment
+- [x] TodoListV2 upgradeable smart contract with RBAC and circuit breaker
+- [x] Full-stack Web3 app: React + Express + Solidity
+- [x] Sepolia testnet deployment
+- [x] Wallet signature authentication (EIP-191)
+- [x] Real-time blockchain event sync with resync recovery
+- [x] Multi-chain configuration (5 networks)
+- [x] CI/CD pipeline (4 GitHub Actions workflows)
+- [x] Production deployment (Vercel + Railway + MongoDB Atlas)
+- [x] Comprehensive contract tests (195+ tests including fuzz)
+- [x] Backend JS to TypeScript migration (index.ts, blockchainService.ts)
+- [x] Analytics dashboard
+- [x] Dark mode and responsive UI
 
-**Port already in use**
-```bash
-# Find and kill process using port 5000, 5173, or 8545
-lsof -i :5000 -i :5173 -i :8545
-kill -9 <PID>
-```
+### Planned
 
-**MetaMask connection issues**
-- Reset MetaMask account nonce if transactions fail
-- Ensure you're connected to the correct network (Localhost 8545 or Sepolia)
-- Import Hardhat test account: Private key from `npx hardhat node` output
+- [ ] Deploy to additional testnets (Polygon Amoy, Arbitrum Sepolia, Optimism Sepolia)
+- [ ] IPFS integration for decentralized description storage
+- [ ] Task sharing and collaboration
+- [ ] Token rewards for task completion
+- [ ] Mobile app (React Native)
 
-## Documentation
+## License
 
-- **[Project Roadmap & Status](claude.md)** - Comprehensive project status, phases, and remaining work
-- Smart contract docs: See `contracts/` directory for Solidity source and Hardhat tests
-- Backend API: See `backend/src/routes/` for available endpoints
-- Frontend: Built with React + TypeScript + Vite
+MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## Acknowledgments
 
-For questions and support, please open an issue in the GitHub repository.
-
-**Common Resources:**
-- [Hardhat Documentation](https://hardhat.org/docs)
-- [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts)
-- [Ethers.js Documentation](https://docs.ethers.org)
-- [MongoDB Documentation](https://docs.mongodb.com)
+- [OpenZeppelin](https://www.openzeppelin.com/) — Secure smart contract libraries
+- [Hardhat](https://hardhat.org/) — Ethereum development environment
+- [Alchemy](https://www.alchemy.com/) — RPC infrastructure
