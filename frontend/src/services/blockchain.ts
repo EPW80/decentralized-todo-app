@@ -1,5 +1,6 @@
 import { BrowserProvider, Contract } from 'ethers';
 import TodoListABI from '../contracts/TodoListV2ABI.json';
+import { uploadDescription } from './ipfs';
 
 interface TaskStruct {
   id: bigint;
@@ -47,10 +48,13 @@ export const blockchainService = {
     const contract = await this.getContractWithSigner(provider, chainId);
     if (!contract) throw new Error('Contract not available');
 
+    // Upload description to IPFS and store CID on-chain
+    const ipfsUri = await uploadDescription(description);
+
     // Convert due date to Unix timestamp (0 if no due date)
     const dueDateTimestamp = dueDate ? Math.floor(dueDate.getTime() / 1000) : 0;
 
-    const tx = await contract.createTask(description, dueDateTimestamp);
+    const tx = await contract.createTask(ipfsUri, dueDateTimestamp);
     const receipt = await tx.wait();
 
     // Extract taskId from event
@@ -99,7 +103,10 @@ export const blockchainService = {
     const contract = await this.getContractWithSigner(provider, chainId);
     if (!contract) throw new Error('Contract not available');
 
-    const tx = await contract.updateTask(taskId, newDescription);
+    // Upload new description to IPFS and store CID on-chain
+    const ipfsUri = await uploadDescription(newDescription);
+
+    const tx = await contract.updateTask(taskId, ipfsUri);
     const receipt = await tx.wait();
     return { transactionHash: receipt.hash };
   },

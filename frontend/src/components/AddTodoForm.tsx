@@ -15,6 +15,7 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState<string>('');
   const [isCreating, setIsCreating] = useState(false);
+  const [creatingPhase, setCreatingPhase] = useState<'ipfs' | 'blockchain' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const networkTheme = useNetworkTheme();
@@ -54,12 +55,16 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
     }
 
     setIsCreating(true);
+    setCreatingPhase('ipfs');
     setError(null);
     setSuccess(false);
 
     try {
       // Create task on blockchain with optional due date
+      // Phase 1: IPFS upload happens inside createTask
+      // Phase 2: Blockchain transaction
       const dueDateObj = dueDate ? new Date(dueDate) : null;
+      setCreatingPhase('blockchain');
       const result = await blockchainService.createTask(provider, chainId, description, dueDateObj);
 
       // Backend will automatically sync via event listener
@@ -98,6 +103,7 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
       }
     } finally {
       setIsCreating(false);
+      setCreatingPhase(null);
     }
   };
 
@@ -245,7 +251,7 @@ const AddTodoForm: React.FC<AddTodoFormProps> = ({ onTodoCreated }) => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span className="text-base">Creating Task...</span>
+              <span className="text-base">{creatingPhase === 'ipfs' ? 'Storing description...' : 'Confirming on blockchain...'}</span>
             </>
           ) : (
             <>

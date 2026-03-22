@@ -1,5 +1,6 @@
 const Todo = require("../models/Todo");
 const blockchainService = require("../services/blockchainService");
+const { resolveDescription, isIpfsCid } = require("../services/ipfsService");
 
 /**
  * Get all todos for a specific address with advanced filtering and sorting
@@ -116,9 +117,15 @@ const verifyTodo = async (req, res, next) => {
     try {
       const blockchainTask = await contract.getTask(todo.blockchainId);
 
+      // For IPFS-backed tasks, the on-chain description is "ipfs://CID"
+      // while MongoDB holds the resolved text. Compare CID instead.
+      const descriptionMatch = isIpfsCid(blockchainTask.description)
+        ? todo.ipfsCid === blockchainTask.description.replace("ipfs://", "")
+        : blockchainTask.description === todo.description;
+
       const isValid =
         blockchainTask.owner.toLowerCase() === todo.owner &&
-        blockchainTask.description === todo.description &&
+        descriptionMatch &&
         blockchainTask.completed === todo.completed &&
         blockchainTask.deleted === todo.deleted;
 
@@ -219,9 +226,13 @@ const syncTodoFromBlockchain = async (req, res, next) => {
     // Check if already exists in DB
     let todo = await Todo.findByBlockchainId(chainId, blockchainId);
 
+    // Resolve IPFS CID to plain text if applicable
+    const resolved = await resolveDescription(task.description);
+
     if (todo) {
       // Update existing
-      todo.description = task.description;
+      todo.description = resolved.text;
+      todo.ipfsCid = resolved.cid;
       todo.completed = task.completed;
       todo.blockchainCompletedAt = task.completed
         ? new Date(Number(task.completedAt) * 1000)
@@ -231,7 +242,7 @@ const syncTodoFromBlockchain = async (req, res, next) => {
         task.deleted && task.deletedAt
           ? new Date(Number(task.deletedAt) * 1000)
           : null;
-      todo.syncStatus = "synced";
+      todo.syncStatus = (resolved.cid && resolved.text === task.description) ? "error" : "synced";
       todo.lastSyncedAt = new Date();
       await todo.save();
     } else {
@@ -241,7 +252,8 @@ const syncTodoFromBlockchain = async (req, res, next) => {
         chainId,
         transactionHash: "", // Not available from direct query
         owner: task.owner.toLowerCase(),
-        description: task.description,
+        description: resolved.text,
+        ipfsCid: resolved.cid,
         completed: task.completed,
         blockchainCreatedAt: new Date(Number(task.createdAt) * 1000),
         blockchainCompletedAt: task.completed
@@ -252,7 +264,7 @@ const syncTodoFromBlockchain = async (req, res, next) => {
           task.deleted && task.deletedAt
             ? new Date(Number(task.deletedAt) * 1000)
             : null,
-        syncStatus: "synced",
+        syncStatus: (resolved.cid && resolved.text === task.description) ? "error" : "synced",
       });
       await todo.save();
     }

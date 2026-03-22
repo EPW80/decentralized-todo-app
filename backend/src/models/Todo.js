@@ -38,6 +38,10 @@ const todoSchema = new mongoose.Schema(
       maxlength: 500,
       trim: true,
     },
+    ipfsCid: {
+      type: String,
+      default: null,
+    },
     completed: {
       type: Boolean,
       default: false,
@@ -102,6 +106,9 @@ todoSchema.index({ owner: 1, dueDate: 1, completed: 1, deleted: 1 });
 
 // Index for monitoring sync health and retry logic
 todoSchema.index({ syncStatus: 1, lastSyncedAt: 1 });
+
+// Sparse index for IPFS-backed tasks
+todoSchema.index({ ipfsCid: 1 }, { sparse: true });
 
 // TTL index to automatically delete error status documents after 24 hours
 // This prevents the database from accumulating stale error records

@@ -13,6 +13,8 @@ const {
 } = require('../config/blockchain');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const SyncMonitor = require('./syncMonitor');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { resolveDescription: resolveIpfsDescription } = require('./ipfsService');
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1007,16 +1009,23 @@ class BlockchainService {
       }
       logger.info(`[DEBUG] No existing todo found, creating new one`);
 
+      // Resolve IPFS CID to plain text if applicable
+      const resolved = await resolveIpfsDescription(description);
+      const resolvedDescription = resolved.text;
+      const ipfsCid = resolved.cid;
+      const syncStatus = (ipfsCid && resolvedDescription === description) ? 'error' : 'synced';
+
       const todo = new Todo({
         blockchainId,
         chainId,
         transactionHash,
         owner: owner.toLowerCase(),
-        description,
+        description: resolvedDescription,
+        ipfsCid,
         completed: false,
         blockchainCreatedAt: new Date(Number(timestamp) * 1000),
         dueDate: dueDate ? new Date(Number(dueDate) * 1000) : null,
-        syncStatus: 'synced',
+        syncStatus,
       });
 
       logger.info(`[DEBUG] Todo object created, calling save()...`);
@@ -1118,7 +1127,15 @@ class BlockchainService {
         return;
       }
 
-      await todo.updateDescription(newDescription);
+      // Resolve IPFS CID to plain text if applicable
+      const resolved = await resolveIpfsDescription(newDescription);
+      todo.description = resolved.text;
+      todo.ipfsCid = resolved.cid;
+      todo.lastSyncedAt = new Date();
+      if (resolved.cid && resolved.text === newDescription) {
+        todo.syncStatus = 'error'; // CID resolution failed
+      }
+      await todo.save();
       logger.info(`✓ Synced TaskUpdated: ${blockchainId} on chain ${chainId}`);
     } catch (error) {
       const err = error as Error;
