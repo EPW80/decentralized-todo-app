@@ -45,7 +45,7 @@ jobs:
         run: npm ci
 
       - name: Install contracts dependencies (workaround for npm#4828)
-        run: cd contracts && npm install
+        run: cd contracts && rm -rf node_modules && npm install
 
       - name: Compile contracts
         run: npm run build:contracts
@@ -71,7 +71,7 @@ jobs:
         run: npm ci
 
       - name: Install contracts dependencies (workaround for npm#4828)
-        run: cd contracts && npm install
+        run: cd contracts && rm -rf node_modules && npm install
 
       - name: Compile contracts
         run: npm run build:contracts
@@ -132,7 +132,7 @@ jobs:
         run: npm ci
 
       - name: Install contracts dependencies (workaround for npm#4828)
-        run: cd contracts && npm install
+        run: cd contracts && rm -rf node_modules && npm install
 
       - name: Build contracts
         run: npm run build:contracts
