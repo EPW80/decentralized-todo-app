@@ -209,10 +209,10 @@ const Header: React.FC = () => {
             </nav>
           </div>
 
-          {/* Mobile Menu Button and Desktop Actions */}
+          {/* Actions */}
           <div className="flex items-center gap-3 flex-shrink-0">
+            <ThemeToggle />
             <div className="hidden lg:flex items-center gap-3">
-              <ThemeToggle />
               <WalletConnect />
             </div>
 
@@ -336,10 +336,6 @@ const Header: React.FC = () => {
 
                   {/* Mobile Actions */}
                   <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between px-4 py-2">
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Theme</span>
-                      <ThemeToggle />
-                    </div>
                     <div className="px-4 py-2">
                       <WalletConnect />
                     </div>
