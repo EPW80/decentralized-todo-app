@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decentralized Todo App — AU Final Project</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0f0f1a;
+    color: #e2e8f0;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  .slide {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    padding: 4rem 6rem;
+    position: relative;
+    text-align: center;
+  }
+
+  .slide.active { display: flex; }
+
+  /* Gradient mesh background */
+  .slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at 60% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
+    z-index: 0;
+  }
+
+  .slide > * { position: relative; z-index: 1; }
+
+  h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa, #34d399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+  }
+
+  h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 2rem;
+  }
+
+  .subtitle {
+    font-size: 1.5rem;
+    color: #94a3b8;
+    font-weight: 400;
+    margin-bottom: 2rem;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0.3rem;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: #cbd5e1;
+  }
+
+  .tag.purple { border-color: rgba(167,139,250,0.4); color: #c4b5fd; background: rgba(167,139,250,0.1); }
+  .tag.blue   { border-color: rgba(96,165,250,0.4);  color: #93c5fd; background: rgba(96,165,250,0.1); }
+  .tag.green  { border-color: rgba(52,211,153,0.4);  color: #6ee7b7; background: rgba(52,211,153,0.1); }
+  .tag.pink   { border-color: rgba(244,114,182,0.4); color: #f9a8d4; background: rgba(244,114,182,0.1); }
+
+  .problems, .solutions {
+    text-align: left;
+    max-width: 800px;
+    width: 100%;
+  }
+
+  .item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.8rem;
+    font-size: 1.25rem;
+    line-height: 1.6;
+  }
+
+  .item .icon {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+  }
+
+  .item .icon.red    { background: rgba(239,68,68,0.15); }
+  .item .icon.green  { background: rgba(52,211,153,0.15); }
+  .item .icon.blue   { background: rgba(96,165,250,0.15); }
+  .item .icon.purple { background: rgba(167,139,250,0.15); }
+
+  .item strong { color: #f1f5f9; }
+  .item span   { color: #94a3b8; }
+
+  .arch-box {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    max-width: 900px;
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .arch-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .arch-card h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: #e2e8f0;
+  }
+
+  .arch-card p {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  .demo-section {
+    max-width: 850px;
+    width: 100%;
+  }
+
+  .demo-steps {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.2rem;
+    text-align: left;
+    margin-top: 1rem;
+  }
+
+  .demo-step {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 0.75rem;
+    padding: 1.2rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .demo-step .num {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed, #3b82f6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+
+  .demo-step p { font-size: 1rem; color: #cbd5e1; line-height: 1.4; }
+  .demo-step strong { color: #f1f5f9; }
+
+  .links {
+    margin-top: 2rem;
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .links a {
+    color: #60a5fa;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.5rem 1.2rem;
+    border: 1px solid rgba(96,165,250,0.3);
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .links a:hover {
+    background: rgba(96,165,250,0.1);
+    border-color: rgba(96,165,250,0.6);
+  }
+
+  /* Navigation */
+  .nav {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 100;
+  }
+
+  .nav button {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #cbd5e1;
+    padding: 0.6rem 1.2rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .nav button:hover { background: rgba(255,255,255,0.15); }
+
+  .nav .counter {
+    font-size: 0.85rem;
+    color: #64748b;
+    min-width: 3rem;
+    text-align: center;
+  }
+
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #7c3aed, #3b82f6, #34d399);
+    transition: width 0.3s;
+    z-index: 100;
+  }
+
+  .highlight {
+    color: #a78bfa;
+    font-weight: 700;
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat .num {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat .label {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<!-- SLIDE 1: Title / Elevator Pitch (~15s) -->
+<div class="slide active" id="slide-1">
+  <h1>Decentralized Todo App</h1>
+  <p class="subtitle">
+    A full-stack Web3 task manager that stores your todos on-chain,<br>
+    authenticates with your wallet, and pins descriptions to IPFS.
+  </p>
+  <div>
+    <span class="tag purple">Solidity</span>
+    <span class="tag blue">React + TypeScript</span>
+    <span class="tag green">IPFS / Pinata</span>
+    <span class="tag pink">EIP-191 Auth</span>
+    <span class="tag purple">UUPS Proxy</span>
+    <span class="tag blue">Multi-Chain</span>
+  </div>
+  <p style="color: #64748b; margin-top: 2rem; font-size: 0.95rem;">
+    Erik Williams &mdash; Alchemy University EVM Certification
+  </p>
+</div>
+
+<!-- SLIDE 2: Problem Statement (~20s) -->
+<div class="slide" id="slide-2">
+  <h2>The Problem</h2>
+  <div class="problems">
+    <div class="item">
+      <div class="icon red">&#x1F512;</div>
+      <div>
+        <strong>Centralized platforms own your data.</strong><br>
+        <span>Todoist, Google Tasks, Notion &mdash; your tasks live on their servers. They can change terms, shut down, or lock you out at any time.</span>
+      </div>
+    </div>
+    <div class="item">
+      <div class="icon red">&#x1F4B8;</div>
+      <div>
+        <strong>On-chain storage is expensive.</strong><br>
+        <span>Storing a 500-character string on Ethereum costs ~126,000 gas. At scale, this makes decentralized apps impractical for everyday use.</span>
+      </div>
+    </div>
+    <div class="item">
+      <div class="icon red">&#x26A0;</div>
+      <div>
+        <strong>Web3 UX is hard.</strong><br>
+        <span>Users shouldn't need to understand gas, RPCs, or event syncing just to manage a todo list. The blockchain should be invisible.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3: Solution (~25s) -->
+<div class="slide" id="slide-3">
+  <h2>The Solution</h2>
+  <div class="solutions">
+    <div class="item">
+      <div class="icon green">&#x26D3;</div>
+      <div>
+        <strong>Upgradeable smart contract (UUPS proxy)</strong><br>
+        <span>TodoListV2 with role-based access, circuit breaker, reentrancy guard, and soft-delete &mdash; deployed to Sepolia testnet.</span>
+      </div>
+    </div>
+    <div class="item">
+      <div class="icon green">&#x1F4E6;</div>
+      <div>
+        <strong>IPFS for descriptions &mdash; 79% gas savings</strong><br>
+        <span>Descriptions are pinned to Pinata/IPFS. Only the 46-byte CID is stored on-chain instead of the full 500-char string.</span>
+      </div>
+    </div>
+    <div class="item">
+      <div class="icon green">&#x1F3AF;</div>
+      <div>
+        <strong>Seamless Web2-like experience</strong><br>
+        <span>Real-time event sync caches on-chain data in MongoDB. Users see instant reads with blockchain writes happening in the background.</span>
+      </div>
+    </div>
+    <div class="item">
+      <div class="icon green">&#x1F511;</div>
+      <div>
+        <strong>Wallet-native auth (EIP-191)</strong><br>
+        <span>No passwords, no emails. Sign a message with MetaMask, get a JWT. Your address is your identity.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: Architecture (~15s) -->
+<div class="slide" id="slide-4">
+  <h2>Architecture</h2>
+  <div class="arch-box">
+    <div class="arch-card">
+      <h3>&#x1F3A8; Frontend</h3>
+      <p>React 19 + TypeScript<br>Vite + TailwindCSS<br>Ethers.js v6<br>Dark mode &amp; responsive</p>
+    </div>
+    <div class="arch-card">
+      <h3>&#x2699;&#xFE0F; Backend</h3>
+      <p>Express + TypeScript<br>MongoDB + Mongoose<br>Real-time event sync<br>RPC failover &amp; health checks</p>
+    </div>
+    <div class="arch-card">
+      <h3>&#x26D3; Blockchain</h3>
+      <p>Solidity 0.8.22<br>OpenZeppelin 5.0.1<br>UUPS upgradeable proxy<br>IPFS / Pinata storage</p>
+    </div>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><div class="num">195+</div><div class="label">Contract Tests</div></div>
+    <div class="stat"><div class="num">450+</div><div class="label">Backend Tests</div></div>
+    <div class="stat"><div class="num">5</div><div class="label">Networks Configured</div></div>
+    <div class="stat"><div class="num">4</div><div class="label">CI/CD Workflows</div></div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Demo walkthrough (~30s) -->
+<div class="slide" id="slide-5">
+  <h2>Demo Walkthrough</h2>
+  <div class="demo-section">
+    <div class="demo-steps">
+      <div class="demo-step">
+        <div class="num">1</div>
+        <p><strong>Connect wallet</strong><br>MetaMask detection + install prompt</p>
+      </div>
+      <div class="demo-step">
+        <div class="num">2</div>
+        <p><strong>Sign to authenticate</strong><br>EIP-191 signature &rarr; JWT session</p>
+      </div>
+      <div class="demo-step">
+        <div class="num">3</div>
+        <p><strong>Create a task</strong><br>Description &rarr; IPFS &rarr; CID on-chain</p>
+      </div>
+      <div class="demo-step">
+        <div class="num">4</div>
+        <p><strong>Event sync</strong><br>Backend catches event &rarr; resolves CID &rarr; MongoDB</p>
+      </div>
+      <div class="demo-step">
+        <div class="num">5</div>
+        <p><strong>Manage tasks</strong><br>Complete, delete, restore, edit, filter</p>
+      </div>
+      <div class="demo-step">
+        <div class="num">6</div>
+        <p><strong>Resync from chain</strong><br>Recover missed tasks directly from contract</p>
+      </div>
+    </div>
+    <div class="links">
+      <a href="https://github.com/EPW80/decentralized-todo-app" target="_blank">GitHub Repo</a>
+      <a href="https://sepolia.etherscan.io/address/0x0F4228B43aa4b9A8F05AD058a9508039A7B8ee4d" target="_blank">Contract on Sepolia</a>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 6: Thank you -->
+<div class="slide" id="slide-6">
+  <h1>Thank You</h1>
+  <p class="subtitle">
+    Decentralized Todo App &mdash; Full-stack Web3 with IPFS &amp; upgradeable contracts
+  </p>
+  <div style="margin-top: 1rem;">
+    <span class="tag green">Deployed on Sepolia</span>
+    <span class="tag blue">Live on Vercel + Railway</span>
+    <span class="tag purple">195+ Contract Tests</span>
+  </div>
+  <div class="links" style="margin-top: 2.5rem;">
+    <a href="https://github.com/EPW80/decentralized-todo-app" target="_blank">github.com/EPW80/decentralized-todo-app</a>
+  </div>
+  <p style="color: #475569; margin-top: 3rem; font-size: 0.9rem;">
+    Erik Williams &mdash; Alchemy University EVM Certification 2026
+  </p>
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button onclick="prev()">&#8592; Prev</button>
+  <span class="counter" id="counter">1 / 6</span>
+  <button onclick="next()">Next &#8594;</button>
+</div>
+
+<script>
+  let current = 1;
+  const total = 6;
+
+  function show(n) {
+    document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+    document.getElementById('slide-' + n).classList.add('active');
+    document.getElementById('counter').textContent = n + ' / ' + total;
+    document.getElementById('progress').style.width = ((n / total) * 100) + '%';
+  }
+
+  function next() { if (current < total) { current++; show(current); } }
+  function prev() { if (current > 1) { current--; show(current); } }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+  });
+
+  show(1);
+</script>
+
+</body>
+</html>
