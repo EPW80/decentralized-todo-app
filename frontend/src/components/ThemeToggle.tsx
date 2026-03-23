@@ -19,7 +19,7 @@ const ThemeToggle: React.FC = () => {
             : 'text-yellow-500 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)]'
         }`}
       >
-        <img src="/bulb.svg" alt="" className="w-6 h-6" style={{ filter: isDark ? 'invert(0.6)' : 'invert(0) sepia(1) saturate(5) hue-rotate(15deg)' }} />
+        <img src="/bulb.png" alt="" className="w-6 h-6" style={{ filter: isDark ? 'invert(0.6)' : 'invert(0) sepia(1) saturate(5) hue-rotate(15deg)' }} />
       </div>
     </button>
   );
