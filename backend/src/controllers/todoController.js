@@ -242,7 +242,8 @@ const syncTodoFromBlockchain = async (req, res, next) => {
         task.deleted && task.deletedAt
           ? new Date(Number(task.deletedAt) * 1000)
           : null;
-      todo.syncStatus = (resolved.cid && resolved.text === task.description) ? "error" : "synced";
+      todo.syncStatus =
+        resolved.cid && resolved.text === task.description ? "error" : "synced";
       todo.lastSyncedAt = new Date();
       await todo.save();
     } else {
@@ -264,7 +265,10 @@ const syncTodoFromBlockchain = async (req, res, next) => {
           task.deleted && task.deletedAt
             ? new Date(Number(task.deletedAt) * 1000)
             : null,
-        syncStatus: (resolved.cid && resolved.text === task.description) ? "error" : "synced",
+        syncStatus:
+          resolved.cid && resolved.text === task.description
+            ? "error"
+            : "synced",
       });
       await todo.save();
     }

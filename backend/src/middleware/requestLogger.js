@@ -1,5 +1,5 @@
-const { v4: uuidv4 } = require('uuid');
-const logger = require('../utils/logger');
+const { v4: uuidv4 } = require("uuid");
+const logger = require("../utils/logger");
 
 /**
  * Request logging middleware with correlation ID tracking
@@ -7,18 +7,18 @@ const logger = require('../utils/logger');
  */
 const requestLogger = (req, res, next) => {
   // Generate unique request ID
-  const requestId = req.headers['x-request-id'] || uuidv4();
+  const requestId = req.headers["x-request-id"] || uuidv4();
   req.requestId = requestId;
 
   // Create child logger with request context
   req.logger = logger.child({
     requestId,
     ip: req.ip,
-    userAgent: req.headers['user-agent'],
+    userAgent: req.headers["user-agent"],
   });
 
   // Log incoming request
-  req.logger.info('Incoming request', {
+  req.logger.info("Incoming request", {
     method: req.method,
     url: req.url,
     path: req.path,
@@ -35,9 +35,9 @@ const requestLogger = (req, res, next) => {
     res.send = originalSend;
 
     const responseTime = Date.now() - startTime;
-    const logLevel = res.statusCode >= 400 ? 'warn' : 'info';
+    const logLevel = res.statusCode >= 400 ? "warn" : "info";
 
-    req.logger[logLevel]('Outgoing response', {
+    req.logger[logLevel]("Outgoing response", {
       method: req.method,
       url: req.url,
       statusCode: res.statusCode,
@@ -48,7 +48,7 @@ const requestLogger = (req, res, next) => {
   };
 
   // Set request ID header in response
-  res.setHeader('X-Request-ID', requestId);
+  res.setHeader("X-Request-ID", requestId);
 
   next();
 };
@@ -57,16 +57,16 @@ const requestLogger = (req, res, next) => {
  * Sanitize request body to remove sensitive data
  */
 function sanitizeRequestBody(body) {
-  if (!body || typeof body !== 'object') {
+  if (!body || typeof body !== "object") {
     return body;
   }
 
   const sanitized = { ...body };
-  const sensitiveFields = ['password', 'privateKey', 'secret', 'token'];
+  const sensitiveFields = ["password", "privateKey", "secret", "token"];
 
   for (const field of sensitiveFields) {
     if (sanitized[field]) {
-      sanitized[field] = '[REDACTED]';
+      sanitized[field] = "[REDACTED]";
     }
   }
 

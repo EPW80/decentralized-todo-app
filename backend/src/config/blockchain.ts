@@ -97,7 +97,10 @@ const loadContractAddresses = (): Record<number, string | undefined> => {
 // Load contract ABI
 const loadContractABI = (): unknown[] => {
   // Try bundled ABI first (works in production/Railway where artifacts/ is not available)
-  const bundledAbiPath = path.join(__dirname, "../contracts/TodoListV2.abi.json");
+  const bundledAbiPath = path.join(
+    __dirname,
+    "../contracts/TodoListV2.abi.json",
+  );
   // Fallback to Hardhat artifacts (local development)
   const artifactAbiPath = path.join(
     __dirname,

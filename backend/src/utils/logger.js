@@ -28,13 +28,18 @@ const consoleFormat = winston.format.combine(
 const logLevel = process.env.LOG_LEVEL || "info";
 const isProduction = process.env.NODE_ENV === "production";
 const isTest = process.env.NODE_ENV === "test";
-const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+const isServerless =
+  !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 
 // Configure transports
 const transports = [];
 
 // Console transport (always enabled in serverless, development, and test)
-if (isServerless || !isProduction || process.env.ENABLE_CONSOLE_LOGS === "true") {
+if (
+  isServerless ||
+  !isProduction ||
+  process.env.ENABLE_CONSOLE_LOGS === "true"
+) {
   transports.push(
     new winston.transports.Console({
       format: isProduction ? customFormat : consoleFormat,
