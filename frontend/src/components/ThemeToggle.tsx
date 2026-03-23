@@ -12,16 +12,14 @@ const ThemeToggle: React.FC = () => {
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      <div className="relative w-5 h-5">
-        <img
-          src="/bulb.png"
-          alt=""
-          className={`w-5 h-5 object-contain transition-all duration-500 ${
-            isDark
-              ? 'brightness-0 invert opacity-40'
-              : 'opacity-90 drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]'
-          }`}
-        />
+      <div
+        className={`relative w-6 h-6 transition-all duration-500 ${
+          isDark
+            ? 'text-gray-400 opacity-50'
+            : 'text-yellow-500 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)]'
+        }`}
+      >
+        <img src="/bulb.svg" alt="" className="w-6 h-6" style={{ filter: isDark ? 'invert(0.6)' : 'invert(0) sepia(1) saturate(5) hue-rotate(15deg)' }} />
       </div>
     </button>
   );
