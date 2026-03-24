@@ -1,29 +1,30 @@
-import axios from 'axios';
+import axios from "axios";
 
-const PINATA_JWT = import.meta.env.VITE_PINATA_JWT || '';
-const IPFS_GATEWAY = import.meta.env.VITE_IPFS_GATEWAY || 'https://gateway.pinata.cloud/ipfs/';
+const PINATA_JWT = import.meta.env.VITE_PINATA_JWT || "";
+const IPFS_GATEWAY =
+  import.meta.env.VITE_IPFS_GATEWAY || "https://gateway.pinata.cloud/ipfs/";
 
-const PINATA_API_URL = 'https://api.pinata.cloud';
+const PINATA_API_URL = "https://api.pinata.cloud";
 
 /**
  * Check whether a value is an IPFS CID reference (prefixed with ipfs://).
  */
 export function isIpfsCid(value: string): boolean {
-  return value.startsWith('ipfs://');
+  return value.startsWith("ipfs://");
 }
 
 /**
  * Extract the raw CID from an ipfs:// URI.
  */
 export function extractCid(uri: string): string {
-  return uri.replace('ipfs://', '');
+  return uri.replace("ipfs://", "");
 }
 
 /**
  * Build a gateway URL for a given CID.
  */
 export function gatewayUrl(cid: string): string {
-  const base = IPFS_GATEWAY.endsWith('/') ? IPFS_GATEWAY : `${IPFS_GATEWAY}/`;
+  const base = IPFS_GATEWAY.endsWith("/") ? IPFS_GATEWAY : `${IPFS_GATEWAY}/`;
   return `${base}${cid}`;
 }
 
@@ -37,7 +38,7 @@ export function gatewayUrl(cid: string): string {
  */
 export async function uploadDescription(text: string): Promise<string> {
   if (!PINATA_JWT) {
-    throw new Error('IPFS upload not configured — VITE_PINATA_JWT is missing');
+    throw new Error("IPFS upload not configured — VITE_PINATA_JWT is missing");
   }
 
   const payload = {
@@ -60,7 +61,7 @@ export async function uploadDescription(text: string): Promise<string> {
         payload,
         {
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             Authorization: `Bearer ${PINATA_JWT}`,
           },
           timeout: 15000,
@@ -93,12 +94,12 @@ export async function resolveDescription(value: string): Promise<string> {
   const response = await axios.get(url, { timeout: 10000 });
   const data = response.data;
 
-  if (typeof data === 'object' && data.description) {
+  if (typeof data === "object" && data.description) {
     return data.description;
   }
 
   // Fallback: return raw content if it's a plain string
-  return typeof data === 'string' ? data : JSON.stringify(data);
+  return typeof data === "string" ? data : JSON.stringify(data);
 }
 
 export const ipfsService = {

@@ -410,9 +410,8 @@ const TodoItem: React.FC<TodoItemProps> = ({
               ) : (
                 <div className="flex items-start gap-2">
                   <p
-                    className={`text-lg font-medium leading-relaxed flex-1 ${
-                      localTodo.completed ? 'line-through text-gray-500' : 'text-gray-800'
-                    }`}
+                    className={`text-lg font-medium leading-relaxed flex-1 ${localTodo.completed ? 'line-through text-gray-500' : 'text-gray-800'
+                      }`}
                   >
                     {localTodo.description}
                   </p>

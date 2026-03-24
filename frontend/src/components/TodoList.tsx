@@ -282,11 +282,10 @@ const TodoList: React.FC = () => {
         <div className="flex flex-wrap gap-3 mb-8 animate-slide-in relative z-10">
           <button
             onClick={() => setFilter('all')}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
-              filter === 'all'
+            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${filter === 'all'
                 ? 'gradient-primary text-white shadow-glow'
                 : 'glass-effect text-gray-700 hover:shadow-glow-sm'
-            }`}
+              }`}
           >
             <span className="flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,11 +299,10 @@ const TodoList: React.FC = () => {
           </button>
           <button
             onClick={() => setFilter('active')}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
-              filter === 'active'
+            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${filter === 'active'
                 ? 'gradient-primary text-white shadow-glow'
                 : 'glass-effect text-gray-700 hover:shadow-glow-sm'
-            }`}
+              }`}
           >
             <span className="flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -318,11 +316,10 @@ const TodoList: React.FC = () => {
           </button>
           <button
             onClick={() => setFilter('completed')}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
-              filter === 'completed'
+            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${filter === 'completed'
                 ? 'gradient-primary text-white shadow-glow'
                 : 'glass-effect text-gray-700 hover:shadow-glow-sm'
-            }`}
+              }`}
           >
             <span className="flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,15 +371,15 @@ const TodoList: React.FC = () => {
               {filter === 'all'
                 ? '🎉 Ready to Start!'
                 : filter === 'active'
-                ? '✨ All Caught Up!'
-                : '🎯 No Completed Tasks Yet'}
+                  ? '✨ All Caught Up!'
+                  : '🎯 No Completed Tasks Yet'}
             </h3>
             <p className="text-gray-600 text-lg max-w-md mx-auto relative z-10">
               {filter === 'all'
                 ? 'Create your first task above and start managing your todos on the blockchain!'
                 : filter === 'active'
-                ? 'You have no active tasks. Great work! Create a new one or check completed tasks.'
-                : 'Complete some tasks to see them here. Keep going!'}
+                  ? 'You have no active tasks. Great work! Create a new one or check completed tasks.'
+                  : 'Complete some tasks to see them here. Keep going!'}
             </p>
           </div>
         ) : (
@@ -437,11 +434,10 @@ const TodoList: React.FC = () => {
                         <button
                           key={pageNum}
                           onClick={() => setPage(pageNum)}
-                          className={`w-10 h-10 rounded-lg font-semibold transition-all duration-200 ${
-                            page === pageNum
+                          className={`w-10 h-10 rounded-lg font-semibold transition-all duration-200 ${page === pageNum
                               ? 'gradient-primary text-white shadow-glow'
                               : 'glass-effect text-gray-700 hover:shadow-glow-sm'
-                          }`}
+                            }`}
                         >
                           {pageNum}
                         </button>

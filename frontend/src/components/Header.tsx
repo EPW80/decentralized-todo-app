@@ -76,10 +76,9 @@ const Header: React.FC = () => {
       className={`
         shadow-lg sticky top-0 z-50 animate-fade-in border-b relative overflow-hidden
         transition-all duration-300
-        ${
-          scrolled
-            ? 'glass-frosted border-white/20 backdrop-blur-3xl py-2 shadow-glow'
-            : 'glass-effect border-white/30 backdrop-blur-xl py-3'
+        ${scrolled
+          ? 'glass-frosted border-white/20 backdrop-blur-3xl py-2 shadow-glow'
+          : 'glass-effect border-white/30 backdrop-blur-xl py-3'
         }
       `}
     >
@@ -87,9 +86,8 @@ const Header: React.FC = () => {
       <HexagonPattern opacity={scrolled ? 0.02 : 0.04} size={30} />
       <DigitalGrid opacity={scrolled ? 0.015 : 0.03} gridSize={25} />
       <div
-        className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 transition-all duration-300 ${
-          scrolled ? 'py-2' : 'py-3'
-        }`}
+        className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 transition-all duration-300 ${scrolled ? 'py-2' : 'py-3'
+          }`}
       >
         <div className="flex items-center justify-between gap-4">
           {/* Logo and Title */}
@@ -127,15 +125,14 @@ const Header: React.FC = () => {
             <nav className="hidden lg:flex items-center gap-1">
               <Link
                 to="/"
-                className={`relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 transform hover:scale-105 ${
-                  isActive('/') ? 'shadow-md' : 'text-gray-700'
-                }`}
+                className={`relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 transform hover:scale-105 ${isActive('/') ? 'shadow-md' : 'text-gray-700'
+                  }`}
                 style={
                   isActive('/')
                     ? {
-                        color: networkTheme.primaryColor,
-                        backgroundColor: `${networkTheme.primaryColor}15`,
-                      }
+                      color: networkTheme.primaryColor,
+                      backgroundColor: `${networkTheme.primaryColor}15`,
+                    }
                     : {}
                 }
               >
@@ -154,15 +151,14 @@ const Header: React.FC = () => {
               </Link>
               <Link
                 to="/analytics"
-                className={`relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 transform hover:scale-105 ${
-                  isActive('/analytics') ? 'shadow-md' : 'text-gray-700'
-                }`}
+                className={`relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 transform hover:scale-105 ${isActive('/analytics') ? 'shadow-md' : 'text-gray-700'
+                  }`}
                 style={
                   isActive('/analytics')
                     ? {
-                        color: networkTheme.primaryColor,
-                        backgroundColor: `${networkTheme.primaryColor}15`,
-                      }
+                      color: networkTheme.primaryColor,
+                      backgroundColor: `${networkTheme.primaryColor}15`,
+                    }
                     : {}
                 }
               >
@@ -181,15 +177,14 @@ const Header: React.FC = () => {
               </Link>
               <Link
                 to="/about"
-                className={`relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 transform hover:scale-105 ${
-                  isActive('/about') ? 'shadow-md' : 'text-gray-700'
-                }`}
+                className={`relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 transform hover:scale-105 ${isActive('/about') ? 'shadow-md' : 'text-gray-700'
+                  }`}
                 style={
                   isActive('/about')
                     ? {
-                        color: networkTheme.primaryColor,
-                        backgroundColor: `${networkTheme.primaryColor}15`,
-                      }
+                      color: networkTheme.primaryColor,
+                      backgroundColor: `${networkTheme.primaryColor}15`,
+                    }
                     : {}
                 }
               >
@@ -275,9 +270,9 @@ const Header: React.FC = () => {
                     style={
                       isActive('/')
                         ? {
-                            color: networkTheme.primaryColor,
-                            backgroundColor: `${networkTheme.primaryColor}15`,
-                          }
+                          color: networkTheme.primaryColor,
+                          backgroundColor: `${networkTheme.primaryColor}15`,
+                        }
                         : {}
                     }
                   >
@@ -297,9 +292,9 @@ const Header: React.FC = () => {
                     style={
                       isActive('/analytics')
                         ? {
-                            color: networkTheme.primaryColor,
-                            backgroundColor: `${networkTheme.primaryColor}15`,
-                          }
+                          color: networkTheme.primaryColor,
+                          backgroundColor: `${networkTheme.primaryColor}15`,
+                        }
                         : {}
                     }
                   >
@@ -319,9 +314,9 @@ const Header: React.FC = () => {
                     style={
                       isActive('/about')
                         ? {
-                            color: networkTheme.primaryColor,
-                            backgroundColor: `${networkTheme.primaryColor}15`,
-                          }
+                          color: networkTheme.primaryColor,
+                          backgroundColor: `${networkTheme.primaryColor}15`,
+                        }
                         : {}
                     }
                   >

@@ -9,7 +9,7 @@ export interface Todo {
   blockchainCreatedAt: string;
   blockchainCompletedAt: string | null;
   dueDate: string | null;
-  syncStatus: 'synced' | 'pending' | 'error';
+  syncStatus: "synced" | "pending" | "error";
   lastSyncedAt: string;
   deleted: boolean;
   createdAt: string;

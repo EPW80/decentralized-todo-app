@@ -1,6 +1,6 @@
-import { BrowserProvider, Contract } from 'ethers';
-import TodoListABI from '../contracts/TodoListV2ABI.json';
-import { uploadDescription } from './ipfs';
+import { BrowserProvider, Contract } from "ethers";
+import TodoListABI from "../contracts/TodoListV2ABI.json";
+import { uploadDescription } from "./ipfs";
 
 interface TaskStruct {
   id: bigint;
@@ -12,11 +12,11 @@ interface TaskStruct {
 }
 
 const CONTRACT_ADDRESSES: Record<number, string> = {
-  31337: import.meta.env.VITE_CONTRACT_ADDRESS_31337 || '',
-  11155111: import.meta.env.VITE_CONTRACT_ADDRESS_11155111 || '',
-  80002: import.meta.env.VITE_CONTRACT_ADDRESS_80002 || '',
-  421614: import.meta.env.VITE_CONTRACT_ADDRESS_421614 || '',
-  11155420: import.meta.env.VITE_CONTRACT_ADDRESS_11155420 || '',
+  31337: import.meta.env.VITE_CONTRACT_ADDRESS_31337 || "",
+  11155111: import.meta.env.VITE_CONTRACT_ADDRESS_11155111 || "",
+  80002: import.meta.env.VITE_CONTRACT_ADDRESS_80002 || "",
+  421614: import.meta.env.VITE_CONTRACT_ADDRESS_421614 || "",
+  11155420: import.meta.env.VITE_CONTRACT_ADDRESS_11155420 || "",
 };
 
 export const blockchainService = {
@@ -32,7 +32,10 @@ export const blockchainService = {
   },
 
   // Get contract with signer (for write operations)
-  async getContractWithSigner(provider: BrowserProvider, chainId: number): Promise<Contract | null> {
+  async getContractWithSigner(
+    provider: BrowserProvider,
+    chainId: number,
+  ): Promise<Contract | null> {
     const address = CONTRACT_ADDRESSES[chainId];
     if (!address) {
       console.error(`No contract address configured for chainId: ${chainId}`);
@@ -44,9 +47,14 @@ export const blockchainService = {
   },
 
   // Create a new task
-  async createTask(provider: BrowserProvider, chainId: number, description: string, dueDate?: Date | null) {
+  async createTask(
+    provider: BrowserProvider,
+    chainId: number,
+    description: string,
+    dueDate?: Date | null,
+  ) {
     const contract = await this.getContractWithSigner(provider, chainId);
-    if (!contract) throw new Error('Contract not available');
+    if (!contract) throw new Error("Contract not available");
 
     // Upload description to IPFS and store CID on-chain
     const ipfsUri = await uploadDescription(description);
@@ -58,14 +66,16 @@ export const blockchainService = {
     const receipt = await tx.wait();
 
     // Extract taskId from event
-    const event = receipt.logs.find((log: { topics: readonly string[]; data: string }) => {
-      try {
-        const parsed = contract.interface.parseLog(log);
-        return parsed?.name === 'TaskCreated';
-      } catch {
-        return false;
-      }
-    });
+    const event = receipt.logs.find(
+      (log: { topics: readonly string[]; data: string }) => {
+        try {
+          const parsed = contract.interface.parseLog(log);
+          return parsed?.name === "TaskCreated";
+        } catch {
+          return false;
+        }
+      },
+    );
 
     if (event) {
       const parsed = contract.interface.parseLog(event);
@@ -79,9 +89,13 @@ export const blockchainService = {
   },
 
   // Complete a task
-  async completeTask(provider: BrowserProvider, chainId: number, taskId: string) {
+  async completeTask(
+    provider: BrowserProvider,
+    chainId: number,
+    taskId: string,
+  ) {
     const contract = await this.getContractWithSigner(provider, chainId);
-    if (!contract) throw new Error('Contract not available');
+    if (!contract) throw new Error("Contract not available");
 
     const tx = await contract.completeTask(taskId);
     const receipt = await tx.wait();
@@ -91,7 +105,7 @@ export const blockchainService = {
   // Delete a task
   async deleteTask(provider: BrowserProvider, chainId: number, taskId: string) {
     const contract = await this.getContractWithSigner(provider, chainId);
-    if (!contract) throw new Error('Contract not available');
+    if (!contract) throw new Error("Contract not available");
 
     const tx = await contract.deleteTask(taskId);
     const receipt = await tx.wait();
@@ -99,9 +113,14 @@ export const blockchainService = {
   },
 
   // Update a task's description
-  async updateTask(provider: BrowserProvider, chainId: number, taskId: string, newDescription: string) {
+  async updateTask(
+    provider: BrowserProvider,
+    chainId: number,
+    taskId: string,
+    newDescription: string,
+  ) {
     const contract = await this.getContractWithSigner(provider, chainId);
-    if (!contract) throw new Error('Contract not available');
+    if (!contract) throw new Error("Contract not available");
 
     // Upload new description to IPFS and store CID on-chain
     const ipfsUri = await uploadDescription(newDescription);
@@ -114,7 +133,7 @@ export const blockchainService = {
   // Get a specific task
   async getTask(provider: BrowserProvider, chainId: number, taskId: string) {
     const contract = this.getContract(provider, chainId);
-    if (!contract) throw new Error('Contract not available');
+    if (!contract) throw new Error("Contract not available");
 
     const task = await contract.getTask(taskId);
     return {
@@ -123,23 +142,32 @@ export const blockchainService = {
       description: task.description,
       completed: task.completed,
       createdAt: new Date(Number(task.createdAt) * 1000),
-      completedAt: task.completedAt > 0 ? new Date(Number(task.completedAt) * 1000) : null,
+      completedAt:
+        task.completedAt > 0 ? new Date(Number(task.completedAt) * 1000) : null,
     };
   },
 
   // Get user's tasks
-  async getUserTasks(provider: BrowserProvider, chainId: number, userAddress: string) {
+  async getUserTasks(
+    provider: BrowserProvider,
+    chainId: number,
+    userAddress: string,
+  ) {
     const contract = this.getContract(provider, chainId);
-    if (!contract) throw new Error('Contract not available');
+    if (!contract) throw new Error("Contract not available");
 
     const taskIds = await contract.getUserTasks(userAddress);
     return taskIds.map((id: bigint) => id.toString());
   },
 
   // Get user's task details
-  async getUserTaskDetails(provider: BrowserProvider, chainId: number, userAddress: string) {
+  async getUserTaskDetails(
+    provider: BrowserProvider,
+    chainId: number,
+    userAddress: string,
+  ) {
     const contract = this.getContract(provider, chainId);
-    if (!contract) throw new Error('Contract not available');
+    if (!contract) throw new Error("Contract not available");
 
     const tasks = await contract.getUserTaskDetails(userAddress, false);
     return tasks.map((task: TaskStruct) => ({
@@ -148,23 +176,32 @@ export const blockchainService = {
       description: task.description,
       completed: task.completed,
       createdAt: new Date(Number(task.createdAt) * 1000),
-      completedAt: task.completedAt > 0 ? new Date(Number(task.completedAt) * 1000) : null,
+      completedAt:
+        task.completedAt > 0 ? new Date(Number(task.completedAt) * 1000) : null,
     }));
   },
 
   // Get task count for user
-  async getTaskCount(provider: BrowserProvider, chainId: number, userAddress: string) {
+  async getTaskCount(
+    provider: BrowserProvider,
+    chainId: number,
+    userAddress: string,
+  ) {
     const contract = this.getContract(provider, chainId);
-    if (!contract) throw new Error('Contract not available');
+    if (!contract) throw new Error("Contract not available");
 
     const count = await contract.getTaskCount(userAddress);
     return Number(count);
   },
 
   // Restore a deleted task
-  async restoreTask(provider: BrowserProvider, chainId: number, taskId: string) {
+  async restoreTask(
+    provider: BrowserProvider,
+    chainId: number,
+    taskId: string,
+  ) {
     const contract = await this.getContractWithSigner(provider, chainId);
-    if (!contract) throw new Error('Contract not available');
+    if (!contract) throw new Error("Contract not available");
 
     const tx = await contract.restoreTask(taskId);
     const receipt = await tx.wait();
@@ -173,7 +210,7 @@ export const blockchainService = {
 
   // Check if network is supported
   isSupportedNetwork(chainId: number): boolean {
-    return chainId in CONTRACT_ADDRESSES && CONTRACT_ADDRESSES[chainId] !== '';
+    return chainId in CONTRACT_ADDRESSES && CONTRACT_ADDRESSES[chainId] !== "";
   },
 
   // Get contract address for network

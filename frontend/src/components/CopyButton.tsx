@@ -53,11 +53,10 @@ const CopyButton: React.FC<CopyButtonProps> = ({
         <div className="relative w-4 h-4">
           {/* Copy icon */}
           <svg
-            className={`absolute inset-0 w-4 h-4 transition-all duration-300 ${
-              copied
+            className={`absolute inset-0 w-4 h-4 transition-all duration-300 ${copied
                 ? 'opacity-0 scale-0 rotate-90'
                 : 'opacity-70 group-hover:opacity-100 scale-100 rotate-0'
-            }`}
+              }`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -72,11 +71,10 @@ const CopyButton: React.FC<CopyButtonProps> = ({
 
           {/* Check icon */}
           <svg
-            className={`absolute inset-0 w-4 h-4 text-green-500 transition-all duration-300 ${
-              copied
+            className={`absolute inset-0 w-4 h-4 text-green-500 transition-all duration-300 ${copied
                 ? 'opacity-100 scale-100 rotate-0'
                 : 'opacity-0 scale-0 -rotate-90'
-            }`}
+              }`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

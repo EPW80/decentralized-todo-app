@@ -1,19 +1,20 @@
-import axios from 'axios';
-import type { Todo, UserStats, ApiResponse } from '../types/todo';
+import axios from "axios";
+import type { Todo, UserStats, ApiResponse } from "../types/todo";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Add request interceptor for auth tokens if needed
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem("authToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -21,14 +22,14 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // API methods
 export const apiService = {
   // Health check
   async getHealth() {
-    const response = await api.get('/health');
+    const response = await api.get("/health");
     return response.data;
   },
 
@@ -39,7 +40,7 @@ export const apiService = {
   },
 
   async login(address: string, signature: string, message: string) {
-    const response = await api.post('/auth/login', {
+    const response = await api.post("/auth/login", {
       address,
       signature,
       message,
@@ -51,7 +52,7 @@ export const apiService = {
   async getTodosByAddress(
     address: string,
     includeCompleted: boolean = true,
-    includeDeleted: boolean = false
+    includeDeleted: boolean = false,
   ): Promise<ApiResponse<Todo[]>> {
     const response = await api.get(`/todos/${address}`, {
       params: { includeCompleted, includeDeleted },
@@ -78,8 +79,11 @@ export const apiService = {
   },
 
   // Sync todo from blockchain
-  async syncTodoFromBlockchain(chainId: number, blockchainId: string): Promise<ApiResponse<Todo>> {
-    const response = await api.post('/todos/sync', {
+  async syncTodoFromBlockchain(
+    chainId: number,
+    blockchainId: string,
+  ): Promise<ApiResponse<Todo>> {
+    const response = await api.post("/todos/sync", {
       chainId,
       blockchainId,
     });

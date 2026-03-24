@@ -1,15 +1,15 @@
 // Re-export todo-related types from todo.ts
-export type { Todo, UserStats, ApiResponse } from './todo';
+export type { Todo, UserStats, ApiResponse } from "./todo";
 
 // Re-export error types and utilities
-export type { ErrorWithMessage, ErrorWithCode, EthereumError } from './error';
+export type { ErrorWithMessage, ErrorWithCode, EthereumError } from "./error";
 export {
   isErrorWithMessage,
   isErrorWithCode,
   isEthereumError,
   toErrorMessage,
   getErrorCode,
-} from './error';
+} from "./error";
 
 // Other application types
 export interface Network {

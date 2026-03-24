@@ -40,9 +40,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         // Blockchain-themed spinner
         <div className="relative flex items-center justify-center">
           <div
-            className={`${sizeClasses[size]} rounded-full border-purple-500 border-t-transparent ${
-              prefersReducedMotion ? '' : 'animate-spin'
-            }`}
+            className={`${sizeClasses[size]} rounded-full border-purple-500 border-t-transparent ${prefersReducedMotion ? '' : 'animate-spin'
+              }`}
             style={{ animationDuration: '0.8s' }}
             role="status"
             aria-label="Loading"
@@ -64,9 +63,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       ) : (
         // Default spinner
         <div
-          className={`${sizeClasses[size]} rounded-full border-purple-500 border-t-transparent ${
-            prefersReducedMotion ? '' : 'animate-spin'
-          }`}
+          className={`${sizeClasses[size]} rounded-full border-purple-500 border-t-transparent ${prefersReducedMotion ? '' : 'animate-spin'
+            }`}
           role="status"
           aria-label="Loading"
         >
@@ -76,9 +74,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
       {message && (
         <p
-          className={`${textSizeClasses[size]} font-medium text-gray-700 dark:text-gray-300 text-center max-w-xs ${
-            prefersReducedMotion ? '' : 'animate-pulse'
-          }`}
+          className={`${textSizeClasses[size]} font-medium text-gray-700 dark:text-gray-300 text-center max-w-xs ${prefersReducedMotion ? '' : 'animate-pulse'
+            }`}
           role="status"
           aria-live="polite"
         >

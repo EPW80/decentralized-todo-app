@@ -147,21 +147,20 @@ const NetworkSwitcher: React.FC<NetworkSwitcherProps> = ({ onClose }) => {
                   key={network.chainId}
                   onClick={() => switchNetwork(network.chainId, network.hexChainId)}
                   disabled={switching || isActive}
-                  className={`relative group text-left rounded-2xl p-5 transition-all duration-300 transform hover:scale-[1.02] disabled:cursor-not-allowed overflow-hidden ${
-                    isActive
+                  className={`relative group text-left rounded-2xl p-5 transition-all duration-300 transform hover:scale-[1.02] disabled:cursor-not-allowed overflow-hidden ${isActive
                       ? 'ring-4 shadow-lg'
                       : 'glass-effect hover:shadow-xl'
-                  }`}
+                    }`}
                   style={
                     isActive
                       ? {
-                          background: `${theme.primaryColor}10`,
-                          borderColor: theme.primaryColor,
-                          boxShadow: `0 8px 24px ${theme.glowColor}`,
-                        }
+                        background: `${theme.primaryColor}10`,
+                        borderColor: theme.primaryColor,
+                        boxShadow: `0 8px 24px ${theme.glowColor}`,
+                      }
                       : {
-                          border: `2px solid ${theme.primaryColor}20`,
-                        }
+                        border: `2px solid ${theme.primaryColor}20`,
+                      }
                   }
                 >
                   {/* Gradient accent */}

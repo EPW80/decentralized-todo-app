@@ -18,10 +18,10 @@ export interface EthereumError extends ErrorWithCode {
 // Type guard to check if error has a message
 export function isErrorWithMessage(error: unknown): error is ErrorWithMessage {
   return (
-    typeof error === 'object' &&
+    typeof error === "object" &&
     error !== null &&
-    'message' in error &&
-    typeof (error as Record<string, unknown>).message === 'string'
+    "message" in error &&
+    typeof (error as Record<string, unknown>).message === "string"
   );
 }
 
@@ -29,9 +29,9 @@ export function isErrorWithMessage(error: unknown): error is ErrorWithMessage {
 export function isErrorWithCode(error: unknown): error is ErrorWithCode {
   return (
     isErrorWithMessage(error) &&
-    'code' in error &&
-    (typeof (error as Record<string, unknown>).code === 'string' ||
-      typeof (error as Record<string, unknown>).code === 'number')
+    "code" in error &&
+    (typeof (error as Record<string, unknown>).code === "string" ||
+      typeof (error as Record<string, unknown>).code === "number")
   );
 }
 
@@ -41,11 +41,11 @@ export function isEthereumError(error: unknown): error is EthereumError {
 
   const err = error as unknown as Record<string, unknown>;
   return (
-    'error' in err &&
-    typeof err.error === 'object' &&
+    "error" in err &&
+    typeof err.error === "object" &&
     err.error !== null &&
-    'code' in err.error &&
-    'message' in err.error
+    "code" in err.error &&
+    "message" in err.error
   );
 }
 
@@ -55,11 +55,11 @@ export function toErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  if (typeof error === 'string') {
+  if (typeof error === "string") {
     return error;
   }
 
-  return 'An unknown error occurred';
+  return "An unknown error occurred";
 }
 
 // Get error code if available

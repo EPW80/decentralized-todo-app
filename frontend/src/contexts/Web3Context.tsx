@@ -92,12 +92,12 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       console.debug('Connection already in progress (ref), skipping duplicate request');
       return;
     }
-    
+
     if (walletState.isConnecting) {
       console.debug('Connection already in progress (state), skipping duplicate request');
       return;
     }
-    
+
     if (walletState.isConnected) {
       console.debug('Already connected, skipping connection request');
       return;
@@ -137,15 +137,15 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       // Check for "already processing" error (-32002) in various possible locations
       const isAlreadyProcessingError = (err: unknown): boolean => {
         if (!err || typeof err !== 'object') return false;
-        
+
         // Direct code check
         if ('code' in err && err.code === -32002) return true;
-        
+
         // Nested error check (ethers.js wrapping)
         if ('error' in err && typeof err.error === 'object' && err.error !== null) {
           if ('code' in err.error && err.error.code === -32002) return true;
         }
-        
+
         // Check in info object (newer ethers.js versions)
         if ('info' in err && typeof err.info === 'object' && err.info !== null) {
           const info = err.info as Record<string, unknown>;
@@ -153,12 +153,12 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
             if ('code' in (info.error as object) && (info.error as { code?: number }).code === -32002) return true;
           }
         }
-        
+
         // Check message for the error text as fallback
         if ('message' in err && typeof err.message === 'string') {
           if (err.message.includes('Already processing eth_requestAccounts')) return true;
         }
-        
+
         return false;
       };
 
