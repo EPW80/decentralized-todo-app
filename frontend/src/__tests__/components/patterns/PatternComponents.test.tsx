@@ -2,11 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import HexagonPattern from '../../../components/patterns/HexagonPattern';
 import ChainLinkPattern from '../../../components/patterns/ChainLinkPattern';
-import ChainDivider from '../../../components/patterns/ChainDivider';
 import DigitalGrid from '../../../components/patterns/DigitalGrid';
 import BlockchainBorder from '../../../components/patterns/BlockchainBorder';
-import BlockchainSpinner from '../../../components/patterns/BlockchainSpinner';
-import BlockConfirmation from '../../../components/patterns/BlockConfirmation';
 
 // Mock useNetworkTheme for components that depend on it
 vi.mock('../../../hooks/useNetworkTheme', () => ({
@@ -80,19 +77,6 @@ describe('Pattern Components', () => {
     });
   });
 
-  describe('ChainDivider', () => {
-    it('renders with chain link pattern and gradient lines', () => {
-      const { container } = render(<ChainDivider />);
-      // Should have divs for lines and chain links
-      expect(container.querySelectorAll('div').length).toBeGreaterThan(1);
-    });
-
-    it('applies custom className', () => {
-      const { container } = render(<ChainDivider className="my-divider" />);
-      expect(container.firstChild).toHaveClass('my-divider');
-    });
-  });
-
   describe('DigitalGrid', () => {
     it('renders an SVG grid pattern', () => {
       const { container } = render(<DigitalGrid />);
@@ -131,96 +115,4 @@ describe('Pattern Components', () => {
     });
   });
 
-  describe('BlockchainSpinner', () => {
-    it('renders with default message', () => {
-      const { getByText } = render(<BlockchainSpinner />);
-      expect(getByText('Processing on blockchain...')).toBeInTheDocument();
-    });
-
-    it('renders with custom message', () => {
-      const { getByText } = render(<BlockchainSpinner message="Loading..." />);
-      expect(getByText('Loading...')).toBeInTheDocument();
-    });
-
-    it('renders SVG hexagon spinner', () => {
-      const { container } = render(<BlockchainSpinner />);
-      expect(container.querySelector('svg')).toBeInTheDocument();
-      expect(container.querySelector('path')).toBeInTheDocument();
-    });
-
-    it('renders chain link blocks when showChainLinks is true', () => {
-      const { container } = render(<BlockchainSpinner showChainLinks={true} />);
-      const orbitingBlocks = container.querySelectorAll('.rounded-sm');
-      expect(orbitingBlocks.length).toBe(3);
-    });
-
-    it('does not render chain link blocks when showChainLinks is false', () => {
-      const { container } = render(<BlockchainSpinner showChainLinks={false} />);
-      const orbitingBlocks = container.querySelectorAll('.rounded-sm');
-      expect(orbitingBlocks.length).toBe(0);
-    });
-
-    it('renders in sm size', () => {
-      const { container } = render(<BlockchainSpinner size="sm" />);
-      expect(container.innerHTML).toContain('w-12');
-    });
-
-    it('renders in xl size', () => {
-      const { container } = render(<BlockchainSpinner size="xl" />);
-      expect(container.innerHTML).toContain('w-32');
-    });
-
-    it('renders no message when message is empty', () => {
-      const { container } = render(<BlockchainSpinner message="" />);
-      expect(container.querySelector('p')).toBeNull();
-    });
-  });
-
-  describe('BlockConfirmation', () => {
-    it('renders with default message', () => {
-      const { getByText } = render(<BlockConfirmation />);
-      expect(getByText('Transaction Confirmed!')).toBeInTheDocument();
-    });
-
-    it('renders with custom message', () => {
-      const { getByText } = render(<BlockConfirmation message="Task Created!" />);
-      expect(getByText('Task Created!')).toBeInTheDocument();
-    });
-
-    it('displays transaction hash when provided', () => {
-      const hash = '0xabc123def456';
-      const { getByText } = render(<BlockConfirmation txHash={hash} />);
-      expect(getByText(hash)).toBeInTheDocument();
-      expect(getByText('Transaction Hash:')).toBeInTheDocument();
-    });
-
-    it('does not display tx hash section when not provided', () => {
-      const { queryByText } = render(<BlockConfirmation />);
-      expect(queryByText('Transaction Hash:')).toBeNull();
-    });
-
-    it('calls onComplete after duration', () => {
-      vi.useFakeTimers();
-      const onComplete = vi.fn();
-
-      render(<BlockConfirmation onComplete={onComplete} duration={2000} />);
-
-      expect(onComplete).not.toHaveBeenCalled();
-      vi.advanceTimersByTime(2000);
-      expect(onComplete).toHaveBeenCalledTimes(1);
-
-      vi.useRealTimers();
-    });
-
-    it('renders ChainLinkPattern', () => {
-      const { container } = render(<BlockConfirmation />);
-      const svgs = container.querySelectorAll('svg');
-      expect(svgs.length).toBeGreaterThan(0);
-    });
-
-    it('renders block visualization', () => {
-      const { getByText } = render(<BlockConfirmation />);
-      expect(getByText('Added to Blockchain')).toBeInTheDocument();
-    });
-  });
 });

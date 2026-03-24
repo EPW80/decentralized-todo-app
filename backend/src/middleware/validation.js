@@ -1,4 +1,4 @@
-const { body, param, query, validationResult } = require("express-validator");
+const { body, query, validationResult } = require("express-validator");
 
 /**
  * Handle validation errors from express-validator
@@ -43,18 +43,6 @@ const validateRestoreRequest = [
 ];
 
 /**
- * Validation middleware for address parameter
- */
-const validateAddressParam = [
-  param("address")
-    .isString()
-    .trim()
-    .matches(/^0x[a-fA-F0-9]{40}$/)
-    .withMessage("address must be a valid Ethereum address"),
-  handleValidationErrors,
-];
-
-/**
  * Validation middleware for query parameters
  */
 const validateTodoQuery = [
@@ -72,7 +60,6 @@ const validateTodoQuery = [
 module.exports = {
   validateSyncRequest,
   validateRestoreRequest,
-  validateAddressParam,
   validateTodoQuery,
   handleValidationErrors,
 };
