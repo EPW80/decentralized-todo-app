@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install contracts dependencies (workaround for npm#4828)
+        run: cd contracts && rm -rf node_modules && npm install
+
       - name: Build all
         run: npm run build
 
