@@ -1,10 +1,17 @@
-const todoController = require('../../../src/controllers/todoController');
-const Todo = require('../../../src/models/Todo');
-const blockchainService = require('../../../src/services/blockchainService');
-
 // Mock dependencies
-jest.mock('../../../src/models/Todo');
-jest.mock('../../../src/services/blockchainService');
+jest.mock('../../../src/models/Todo', () => {
+  const MockTodo = jest.fn();
+  MockTodo.findByOwner = jest.fn();
+  MockTodo.findByOwnerWithFilters = jest.fn();
+  MockTodo.findById = jest.fn();
+  MockTodo.findByBlockchainId = jest.fn();
+  MockTodo.countByOwner = jest.fn();
+  MockTodo.countDocuments = jest.fn();
+  return MockTodo;
+});
+jest.mock('../../../src/services/blockchainService', () => ({
+  getContract: jest.fn(),
+}));
 jest.mock('../../../src/utils/logger', () => ({
   error: jest.fn(),
   warn: jest.fn(),
@@ -13,6 +20,10 @@ jest.mock('../../../src/utils/logger', () => ({
   stream: { write: jest.fn() },
   child: jest.fn(() => ({ error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() })),
 }));
+
+const todoController = require('../../../src/controllers/todoController');
+const Todo = require('../../../src/models/Todo');
+const blockchainService = require('../../../src/services/blockchainService');
 
 describe('Todo Controller', () => {
   let req, res, next;

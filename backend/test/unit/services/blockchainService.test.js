@@ -865,15 +865,20 @@ describe('BlockchainService', () => {
     });
 
     it('should update description when todo found', async () => {
-      const mockUpdateDescription = jest.fn().mockResolvedValue();
-      Todo.findByBlockchainId = jest.fn().mockResolvedValue({
-        updateDescription: mockUpdateDescription,
-      });
+      const mockSave = jest.fn().mockResolvedValue();
+      const mockTodo = {
+        description: 'old desc',
+        ipfsCid: null,
+        lastSyncedAt: null,
+        save: mockSave,
+      };
+      Todo.findByBlockchainId = jest.fn().mockResolvedValue(mockTodo);
 
       await blockchainService.syncTaskUpdated(31337, BigInt(2), 'old desc', 'new desc');
 
       expect(Todo.findByBlockchainId).toHaveBeenCalledWith(31337, '2');
-      expect(mockUpdateDescription).toHaveBeenCalledWith('new desc');
+      expect(mockTodo.description).toBe('new desc');
+      expect(mockSave).toHaveBeenCalled();
     });
 
     it('should log error when todo not found', async () => {
