@@ -3,12 +3,6 @@ const express = require('express');
 
 // Mock blockchain service to avoid circular JSON issues
 jest.mock('../../../src/services/blockchainService', () => ({
-  __esModule: true,
-  default: {
-    isInitialized: jest.fn(),
-    getNetworkInfo: jest.fn(),
-    getHealthStatus: jest.fn()
-  },
   isInitialized: jest.fn(),
   getNetworkInfo: jest.fn(),
   getHealthStatus: jest.fn()
