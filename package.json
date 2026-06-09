@@ -52,10 +52,5 @@
     "todo"
   ],
   "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@openzeppelin/contracts": "^5.0.1",
-    "@openzeppelin/contracts-upgradeable": "^5.0.1",
-    "@openzeppelin/hardhat-upgrades": "^3.0.0"
-  }
+  "license": "MIT"
 }

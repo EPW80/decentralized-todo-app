@@ -41,11 +41,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install root dependencies
-        run: npm ci
-
-      - name: Install contracts dependencies (workaround for npm#4828)
-        run: cd contracts && rm -rf node_modules && npm install
+      - name: Install dependencies
+        run: npm install
 
       - name: Compile contracts
         run: npm run build:contracts
@@ -67,11 +64,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install root dependencies
-        run: npm ci
-
-      - name: Install contracts dependencies (workaround for npm#4828)
-        run: cd contracts && rm -rf node_modules && npm install
+      - name: Install dependencies
+        run: npm install
 
       - name: Compile contracts
         run: npm run build:contracts
@@ -128,11 +122,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install root dependencies
-        run: npm ci
-
-      - name: Install contracts dependencies (workaround for npm#4828)
-        run: cd contracts && rm -rf node_modules && npm install
+      - name: Install dependencies
+        run: npm install
 
       - name: Build contracts
         run: npm run build:contracts
