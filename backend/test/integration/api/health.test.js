@@ -1,7 +1,5 @@
 const request = require('supertest');
 const express = require('express');
-const healthRoutes = require('../../../src/routes/healthRoutes');
-const blockchainService = require('../../../src/services/blockchainService');
 
 // Mock blockchain service to avoid circular JSON issues
 jest.mock('../../../src/services/blockchainService', () => ({
@@ -9,6 +7,9 @@ jest.mock('../../../src/services/blockchainService', () => ({
   getNetworkInfo: jest.fn(),
   getHealthStatus: jest.fn()
 }));
+
+const blockchainService = require('../../../src/services/blockchainService');
+const healthRoutes = require('../../../src/routes/healthRoutes');
 
 describe('Health API Integration Tests', () => {
   let app;

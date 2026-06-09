@@ -1,12 +1,18 @@
 const express = require('express');
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
-const todoRoutes = require('../../../src/routes/todoRoutes');
-const todoController = require('../../../src/controllers/todoController');
 const { validateAddress } = require('../../../src/middleware/auth');
 
 // Mock dependencies
-jest.mock('../../../src/controllers/todoController');
+jest.mock('../../../src/controllers/todoController', () => ({
+  getTodosByAddress: jest.fn(),
+  getTodoById: jest.fn(),
+  verifyTodo: jest.fn(),
+  getUserStats: jest.fn(),
+  syncTodoFromBlockchain: jest.fn(),
+  restoreTodo: jest.fn(),
+  updateTodo: jest.fn(),
+}));
 jest.mock('../../../src/utils/logger', () => ({
   error: jest.fn(),
   warn: jest.fn(),
@@ -15,6 +21,9 @@ jest.mock('../../../src/utils/logger', () => ({
   stream: { write: jest.fn() },
   child: jest.fn(() => ({ error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() })),
 }));
+
+const todoController = require('../../../src/controllers/todoController');
+const todoRoutes = require('../../../src/routes/todoRoutes');
 
 describe('Todo Routes Integration Tests', () => {
   let app;
