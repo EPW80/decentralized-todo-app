@@ -187,10 +187,10 @@ const startServer = async (): Promise<void> => {
     });
   } catch (error) {
     const err = error as Error;
-    logger.error("Failed to start server:", {
-      error: err.message,
-      stack: err.stack,
-    });
+    // Put the reason in the message: hosted log viewers often show only the
+    // message string and drop structured metadata.
+    logger.error(`Failed to start server: ${err.message}`);
+    logger.error(err.stack || "(no stack)");
     process.exit(1);
   }
 };
