@@ -43,10 +43,10 @@ describe('ThemeToggle Component', () => {
     renderThemeToggle();
 
     const button = screen.getByRole('button');
-    const svgs = button.querySelectorAll('svg');
+    const img = button.querySelector('img');
 
-    // Should have both sun and moon icons
-    expect(svgs.length).toBeGreaterThanOrEqual(2);
+    // Should have a bulb icon image
+    expect(img).not.toBeNull();
   });
 
   it('has hover effects', () => {
