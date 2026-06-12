@@ -212,7 +212,7 @@ describe('AddTodoForm Component', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/creating task/i)).toBeInTheDocument();
+      expect(screen.getByText(/confirming on blockchain/i)).toBeInTheDocument();
     });
     expect(submitButton).toBeDisabled();
   });
