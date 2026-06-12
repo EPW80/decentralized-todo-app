@@ -1,17 +1,14 @@
 const logger = require("../utils/logger");
 
 const errorHandler = (err, req, res, _next) => {
-  // Log full error internally (for debugging)
+  // Put details in the log message itself: hosted log viewers (Railway, etc.)
+  // often surface only the message string and drop structured metadata.
+  const codeTag = err.code !== undefined ? ` code=${err.code}` : "";
+  logger.error(
+    `Error: ${err.name || "Error"}${codeTag} ${req.method} ${req.originalUrl} - ${err.message}`,
+  );
   if (process.env.NODE_ENV === "development") {
-    logger.error("Error:", { error: err.message, stack: err.stack });
-  } else {
-    // In production, log sanitized version
-    logger.error("Error:", {
-      name: err.name,
-      message: err.message,
-      code: err.code,
-      statusCode: err.statusCode,
-    });
+    logger.error(err.stack || "(no stack)");
   }
 
   // Mongoose validation error
@@ -47,14 +44,9 @@ const errorHandler = (err, req, res, _next) => {
     });
   }
 
-  // Blockchain/ethers errors
-  if (err.code && err.code.startsWith("CALL_EXCEPTION")) {
-    // Log full error internally for debugging
-    logger.error("Blockchain error details:", {
-      error: err.message,
-      stack: err.stack,
-    });
-
+  // Blockchain/ethers errors (err.code may be a number for other error types,
+  // e.g. Mongo duplicate key 11000 — guard before calling startsWith)
+  if (typeof err.code === "string" && err.code.startsWith("CALL_EXCEPTION")) {
     return res.status(400).json({
       success: false,
       error: "Blockchain transaction failed",
