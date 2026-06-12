@@ -49,7 +49,11 @@ const connectDB = async (): Promise<mongoose.Connection> => {
     const sanitizedError = err.message
       ? sanitizeMongoURI(err.message)
       : "Connection failed";
-    logger.error("Error connecting to MongoDB:", { error: sanitizedError });
+    logger.error("Error connecting to MongoDB:", {
+      error: sanitizedError,
+      name: err.name || "Error",
+      ...(err.code !== undefined ? { code: err.code } : {}),
+    });
     throw new Error("Database connection failed");
   }
 };

@@ -104,7 +104,7 @@ describe('Database Connection', () => {
       await expect(connectDB()).rejects.toThrow('Database connection failed');
       expect(logger.error).toHaveBeenCalledWith(
         'Error connecting to MongoDB:',
-        { error: 'Connection failed' }
+        expect.objectContaining({ error: 'Connection failed' })
       );
     });
 
