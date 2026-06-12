@@ -34,12 +34,12 @@ const isServerless =
 // Configure transports
 const transports = [];
 
-// Console transport (always enabled in serverless, development, and test)
-if (
-  isServerless ||
-  !isProduction ||
-  process.env.ENABLE_CONSOLE_LOGS === "true"
-) {
+// Console transport (always enabled).
+// Containerized/PaaS hosts (Railway, Fly, Heroku, Docker) capture logs from
+// stdout/stderr, so the console transport must run in production too — otherwise
+// startup failures vanish into the ephemeral filesystem and the host only sees a
+// silent exit. Set ENABLE_CONSOLE_LOGS=false to opt out.
+if (process.env.ENABLE_CONSOLE_LOGS !== "false") {
   transports.push(
     new winston.transports.Console({
       format: isProduction ? customFormat : consoleFormat,
