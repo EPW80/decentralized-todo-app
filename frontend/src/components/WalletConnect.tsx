@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { blockchainService } from '../services/blockchain';
 import { useNetworkTheme } from '../hooks/useNetworkTheme';
@@ -12,6 +12,8 @@ const WalletConnect: React.FC = () => {
   const { address, chainId, isConnecting, isConnected, error, connect, disconnect } = useWeb3();
   const [showError, setShowError] = useState(false);
   const [showNetworkSwitcher, setShowNetworkSwitcher] = useState(false);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const logoutRevertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const networkTheme = useNetworkTheme();
   const isMetaMaskInstalled = typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
 
@@ -20,6 +22,38 @@ const WalletConnect: React.FC = () => {
       setShowError(true);
     }
   }, [error]);
+
+  // Clear the logout confirm revert timer on unmount
+  useEffect(() => {
+    return () => {
+      if (logoutRevertTimer.current) {
+        clearTimeout(logoutRevertTimer.current);
+      }
+    };
+  }, []);
+
+  const cancelLogoutConfirm = () => {
+    if (logoutRevertTimer.current) {
+      clearTimeout(logoutRevertTimer.current);
+      logoutRevertTimer.current = null;
+    }
+    setConfirmingLogout(false);
+  };
+
+  // Two-click confirm: first click arms the button, second click logs out.
+  // Auto-reverts after 4s or on blur to guard against accidental logout.
+  const handleLogoutClick = () => {
+    if (confirmingLogout) {
+      cancelLogoutConfirm();
+      disconnect();
+      return;
+    }
+    setConfirmingLogout(true);
+    logoutRevertTimer.current = setTimeout(() => {
+      logoutRevertTimer.current = null;
+      setConfirmingLogout(false);
+    }, 4000);
+  };
 
   const formatAddress = (addr: string) => {
     return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
@@ -238,17 +272,24 @@ const WalletConnect: React.FC = () => {
               </Tooltip>
             </ActiveGlow>
 
-            {/* Disconnect Button */}
+            {/* Logout Button (two-click confirm) */}
             <button
-              onClick={disconnect}
-              className="glass-effect hover:bg-gradient-to-r hover:from-red-500 hover:to-pink-500 text-gray-700 hover:text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm hover:shadow-glow transition-all duration-300 group transform hover:scale-[1.02] active:scale-[0.98]"
-              title="Disconnect Wallet"
+              onClick={handleLogoutClick}
+              onBlur={cancelLogoutConfirm}
+              data-testid="logout-button"
+              className={`${
+                confirmingLogout
+                  ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-glow'
+                  : 'glass-effect hover:bg-gradient-to-r hover:from-red-500 hover:to-pink-500 text-gray-700 hover:text-white shadow-sm hover:shadow-glow'
+              } font-semibold py-2.5 px-4 rounded-xl transition-all duration-300 group transform hover:scale-[1.02] active:scale-[0.98]`}
+              title={confirmingLogout ? 'Confirm logout' : 'Logout & disconnect wallet'}
+              aria-label={confirmingLogout ? 'Confirm logout' : 'Logout & disconnect wallet'}
             >
               <div className="flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                <span className="hidden md:inline text-sm">Disconnect</span>
+                <span className="text-sm">{confirmingLogout ? 'Confirm logout?' : 'Logout'}</span>
               </div>
             </button>
           </div>
