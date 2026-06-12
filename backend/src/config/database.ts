@@ -49,12 +49,11 @@ const connectDB = async (): Promise<mongoose.Connection> => {
     const sanitizedError = err.message
       ? sanitizeMongoURI(err.message)
       : "Connection failed";
-    // Include name/code in the message itself: hosted log viewers (Railway, etc.)
-    // often surface only the message string and drop structured metadata.
-    const code = err.code !== undefined ? ` code=${err.code}` : "";
-    logger.error(
-      `Error connecting to MongoDB: ${err.name || "Error"}${code} - ${sanitizedError}`,
-    );
+    logger.error("Error connecting to MongoDB:", {
+      error: sanitizedError,
+      name: err.name || "Error",
+      ...(err.code !== undefined ? { code: err.code } : {}),
+    });
     throw new Error("Database connection failed");
   }
 };
