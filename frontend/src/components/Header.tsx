@@ -74,7 +74,7 @@ const Header: React.FC = () => {
   return (
     <header
       className={`
-        shadow-lg sticky top-0 z-50 animate-fade-in border-b relative overflow-hidden
+        shadow-lg sticky top-0 z-50 animate-fade-in border-b overflow-hidden
         transition-all duration-300
         ${scrolled
           ? 'glass-frosted border-white/20 backdrop-blur-3xl py-2 shadow-glow'
